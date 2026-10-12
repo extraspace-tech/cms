@@ -13,3 +13,6 @@ indent_size = 2
 
 [*.cs]
 dotnet_diagnostic.CA2254.severity = error
+dotnet_diagnostic.RS0030.severity = error
+# log property names are lowerCamel (S0-2 plan, Global Constraints)
+dotnet_diagnostic.CA1727.severity = none

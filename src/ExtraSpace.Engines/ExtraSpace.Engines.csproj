@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>ExtraSpace.Engines</RootNamespace>
+  </PropertyGroup>
+</Project>

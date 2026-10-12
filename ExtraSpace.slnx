@@ -2,7 +2,13 @@
   <Folder Name="/infra/">
     <Project Path="infra/ExtraSpace.Infra/ExtraSpace.Infra.csproj" />
   </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/ExtraSpace.Api/ExtraSpace.Api.csproj" />
+    <Project Path="src/ExtraSpace.Engines/ExtraSpace.Engines.csproj" />
+  </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/ExtraSpace.Api.Tests/ExtraSpace.Api.Tests.csproj" />
+    <Project Path="tests/ExtraSpace.Engines.Tests/ExtraSpace.Engines.Tests.csproj" />
     <Project Path="tests/ExtraSpace.Infra.Tests/ExtraSpace.Infra.Tests.csproj" />
   </Folder>
 </Solution>
