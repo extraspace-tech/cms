@@ -1,0 +1,6 @@
+P:System.DateTime.Now;Use the injected TimeProvider (S0 spec §4.6)
+P:System.DateTime.UtcNow;Use the injected TimeProvider (S0 spec §4.6)
+P:System.DateTime.Today;Use the injected TimeProvider and the site's time zone (S0 spec §4.6)
+P:System.DateTimeOffset.Now;Use the injected TimeProvider (S0 spec §4.6)
+P:System.DateTimeOffset.UtcNow;Use the injected TimeProvider (S0 spec §4.6)
+M:System.Guid.NewGuid;Use Guid.CreateVersion7() for ids and RandomNumberGenerator for secrets
