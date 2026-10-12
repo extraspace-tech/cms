@@ -1,4 +1,5 @@
-using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 
 // Deliberate violations for the architecture tests. "Alphabet" exists to catch a prefix bug: it must not count as part of "Alpha".
@@ -22,12 +23,12 @@ namespace ExtraSpace.Api.Tests.ArchFixtures.Features.Beta
         public int Count() => 0;
     }
 
-    internal sealed class BetaController(ArchFixtures.Platform.FixtureDbContext db) : ControllerBase
+    internal static class BetaEndpoints
     {
-        internal int Rows() => db.ChangeTracker.Entries().Count();
+        internal static int Rows(ArchFixtures.Platform.FixtureDbContext db) => db.ChangeTracker.Entries().Count();
     }
 
-    internal sealed class BetaAsyncController : ControllerBase
+    internal static class BetaAsyncEndpoints
     {
         internal static Task<int> Rows() => Task.Run(async () =>
         {
@@ -39,10 +40,23 @@ namespace ExtraSpace.Api.Tests.ArchFixtures.Features.Beta
 
     internal static class BetaHost
     {
-        internal sealed class NestedController(ArchFixtures.Platform.FixtureDbContext db) : ControllerBase
+        internal static class NestedEndpoints
         {
-            internal int Rows() => db.ChangeTracker.Entries().Count();
+            internal static int Rows(ArchFixtures.Platform.FixtureDbContext db) => db.ChangeTracker.Entries().Count();
         }
+    }
+
+    // Not named *Endpoints: caught because it maps a route.
+    internal static class BetaRoutes
+    {
+        internal static void Map(IEndpointRouteBuilder endpoints) =>
+            endpoints.MapGet("/beta", (ArchFixtures.Platform.FixtureDbContext db) => db.ChangeTracker.Entries().Count());
+    }
+
+    internal static class BetaCleanEndpoints
+    {
+        internal static void Map(IEndpointRouteBuilder endpoints) =>
+            endpoints.MapGet("/beta/count", (Contracts.IBetaService beta) => beta.Count());
     }
 }
 

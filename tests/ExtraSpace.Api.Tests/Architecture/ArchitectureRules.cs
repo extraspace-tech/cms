@@ -1,6 +1,5 @@
 using System.Reflection;
 using System.Text.RegularExpressions;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Mono.Cecil;
 
@@ -12,6 +11,8 @@ namespace ExtraSpace.Api.Tests.Architecture;
 /// misses code inside async lambdas (state machine inside <c>&lt;&gt;c</c>), and it treats string constants as dependencies.
 /// Known blind spots (NetArchTest has them too): <c>typeof</c> in an attribute's named arguments, <c>typeof</c> passed
 /// through an <c>object</c> attribute parameter, return-value attributes, and function-pointer field types.
+/// A handler method in a class that neither maps routes nor ends with <c>Endpoints</c> is not checked as an endpoint.
+/// The top-level <c>Program</c> (global namespace) is not checked; it maps groups only, never handlers.
 /// </remarks>
 public static class ArchitectureRules
 {
@@ -38,15 +39,18 @@ public static class ArchitectureRules
             .ToList();
     }
 
-    /// <summary>Controllers call a service; they never touch a DbContext or EF Core.</summary>
-    public static IReadOnlyList<string> ControllerDataAccess(Assembly assembly, string root)
+    /// <summary>Endpoint classes call a service; they never touch a DbContext or EF Core.</summary>
+    /// <remarks>An endpoint class ends with <c>Endpoints</c> (itself or a nested type) or maps routes itself.</remarks>
+    public static IReadOnlyList<string> EndpointDataAccess(Assembly assembly, string root)
     {
         var dbContexts = assembly.GetTypes().Where(t => typeof(DbContext).IsAssignableFrom(t)).Select(t => t.FullName!).ToHashSet();
         var under = new Regex(Under(root));
         var ef = new Regex(Under("Microsoft.EntityFrameworkCore"));
+        // Every method of this class is a Map* method (MapGet, MapPost, MapGroup...), so using it means mapping routes.
+        const string mapMethods = "Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions";
         return Dependencies(assembly)
             .Where(t => under.IsMatch(t.Type.Namespace)
-                && t.Names.Any(n => assembly.GetType(n) is { } type && typeof(ControllerBase).IsAssignableFrom(type))
+                && (t.Names.Any(n => n.EndsWith("Endpoints", StringComparison.Ordinal)) || t.Uses.Any(d => d.FullName == mapMethods))
                 && t.Uses.Any(d => dbContexts.Contains(d.FullName) || ef.IsMatch(d.Namespace)))
             .Select(t => t.Type.FullName)
             .ToList();

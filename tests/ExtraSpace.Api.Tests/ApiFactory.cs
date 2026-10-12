@@ -1,4 +1,5 @@
 using ExtraSpace.Api.Platform.Data;
+using ExtraSpace.Api.Platform.Hosting;
 using ExtraSpace.Api.Tests.TestSupport;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -40,7 +41,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("Cors:AllowedOrigins:0", "https://app.example.test");
         builder.ConfigureTestServices(services =>
         {
-            services.AddControllers().AddApplicationPart(typeof(TestController).Assembly);
+            services.AddSingleton<IEndpointMapper, TestEndpoints>();
+            // The validation generator only sees endpoint types of the compilation that calls AddValidation (TestBody lives here).
+            services.AddValidation();
             services.AddSingleton<Serilog.Core.ILogEventSink>(Logs);
             services.Configure<RateLimiterOptions>(o => o.AddFixedWindowLimiter("test-tight", w =>
             {

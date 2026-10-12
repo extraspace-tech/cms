@@ -16,7 +16,7 @@ public sealed class ArchitectureTests
     {
         ArchitectureRules.CrossFeatureViolations(Api, ApiRoot).Should().BeEmpty();
         ArchitectureRules.LayerViolations(Api, ApiRoot).Should().BeEmpty();
-        ArchitectureRules.ControllerDataAccess(Api, ApiRoot).Should().BeEmpty();
+        ArchitectureRules.EndpointDataAccess(Api, ApiRoot).Should().BeEmpty();
     }
 
     [Fact]
@@ -34,9 +34,9 @@ public sealed class ArchitectureTests
             FixtureRoot + ".Platform.PlatformBad", FixtureRoot + ".Platform.PlatformBadAsync", FixtureRoot + ".Integrations.IntegrationsBad");
 
     [Fact]
-    public void Controller_rule_catches_a_db_context() =>
-        ArchitectureRules.ControllerDataAccess(Tests, FixtureRoot).Should().BeEquivalentTo(
-            Fixtures + "Beta.BetaController", Fixtures + "Beta.BetaAsyncController", Fixtures + "Beta.BetaHost");
+    public void Endpoint_rule_catches_a_db_context() =>
+        ArchitectureRules.EndpointDataAccess(Tests, FixtureRoot).Should().BeEquivalentTo(
+            Fixtures + "Beta.BetaEndpoints", Fixtures + "Beta.BetaAsyncEndpoints", Fixtures + "Beta.BetaHost", Fixtures + "Beta.BetaRoutes");
 
     [Fact]
     public void Engine_rule_catches_a_forbidden_reference() =>

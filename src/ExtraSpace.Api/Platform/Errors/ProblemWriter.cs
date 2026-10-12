@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ExtraSpace.Api.Platform.Errors;
 
-/// <summary>Writes an error response from middleware that runs before MVC (version check, rate limiter).</summary>
+/// <summary>Writes an error response from middleware that runs before the endpoint (version check, rate limiter).</summary>
 public static class ProblemWriter
 {
     public static async Task WriteAsync(HttpContext http, int status, string code, string title)

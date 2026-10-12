@@ -31,7 +31,8 @@ app.UseRateLimiter();                               // 10
 app.UseMiddleware<AppVersionMiddleware>();          // 11
 app.UseAuthentication();                            // 12
 app.UseAuthorization();                             // 13
-app.MapControllers();                               // 14
+                                                    // 14: feature endpoints (S0-3 on), each Features/<X>/<X>Endpoints.cs
+foreach (var mapper in app.Services.GetServices<IEndpointMapper>()) mapper.Map(app);
 app.MapHealthEndpoints();
 if (!app.Environment.IsProduction()) app.MapOpenApi();
                                                     // 15: SPA fallback /admin/{*path} in S0-5

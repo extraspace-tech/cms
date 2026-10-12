@@ -7,7 +7,6 @@ using ExtraSpace.Api.Platform.Logging;
 using ExtraSpace.Api.Platform.Tracing;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.AspNetCore.Mvc.ModelBinding.Metadata;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.OpenApi;
@@ -42,15 +41,16 @@ public static class PlatformServices
         services.AddDataProtection().SetApplicationName("ExtraSpace").PersistKeysToDbContext<AppDbContext>();
         services.AddHealthChecks().AddDbContextCheck<AppDbContext>("database", tags: ["ready"]);
 
-        // Errors and MVC (S0 spec §4.1)
+        // Errors and endpoints (S0 spec §4.1)
         ActivitySetup.EnsureRequestActivities();
         services.AddExceptionHandler<AppExceptionHandler>();
+        services.AddSingleton<IProblemDetailsWriter, JsonProblemWriter>(); // before AddProblemDetails: the first writer that accepts wins
         services.AddProblemDetails(o => o.CustomizeProblemDetails = ProblemDetailsSetup.Customize);
-        services.AddControllers(o => o.ModelMetadataDetailsProviders.Add(new SystemTextJsonValidationMetadataProvider()))
-            .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()))
-            .ConfigureApiBehaviorOptions(o => o.InvalidModelStateResponseFactory = ProblemDetailsSetup.ValidationResponse);
-        // Microsoft.AspNetCore.OpenApi builds its schemas from these options, not MVC's, so the document must see the converter too.
-        services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+        services.AddValidation();
+        // The default is true only in Development; true everywhere sends every bad body through AppExceptionHandler.
+        services.Configure<RouteHandlerOptions>(o => o.ThrowOnBadRequest = true);
+        // The one JSON option set: endpoint responses and the OpenAPI document both read it.
+        services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter(allowIntegerValues: false)));
 
         // Pipeline (S0 spec §4.2)
         services.Configure<ForwardedHeadersOptions>(o =>

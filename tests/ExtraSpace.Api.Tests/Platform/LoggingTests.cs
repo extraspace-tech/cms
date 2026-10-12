@@ -39,11 +39,11 @@ public sealed class LoggingTests(ApiFactory api)
         withException.Should().ContainSingle("an exception is logged exactly once");
         Str(withException[0], "level").Should().Be("Error");
         Str(withException[0], "exception").Should().Contain("secret-detail-12345");
-        Str(withException[0], "route").Should().Be("test/boom");
+        Str(withException[0], "route").Should().Be("/test/boom");
 
         var summary = lines.Single(l => Str(l, "messageTemplate")!.StartsWith("HTTP "));
         Str(summary, "level").Should().Be("Error");
-        Str(summary, "route").Should().Be("test/boom");
+        Str(summary, "route").Should().Be("/test/boom");
         Str(summary, "status").Should().Be("500");
         summary.TryGetProperty("elapsedMs", out _).Should().BeTrue();
     }
@@ -105,7 +105,7 @@ public sealed class LoggingTests(ApiFactory api)
         var lines = api.Logs.LinesFor(traceId);
         Str(lines.Single(l => Str(l, "messageTemplate") == "Customer did a thing"), "customerId").Should().Be("c-123");
         Str(lines.Single(l => Str(l, "messageTemplate")!.StartsWith("HTTP ")), "customerId").Should().Be("c-123");
-        Str(lines.Single(l => Str(l, "messageTemplate") == "Customer did a thing"), "route").Should().Be("test/customer-line");
+        Str(lines.Single(l => Str(l, "messageTemplate") == "Customer did a thing"), "route").Should().Be("/test/customer-line");
     }
 
     [Fact]

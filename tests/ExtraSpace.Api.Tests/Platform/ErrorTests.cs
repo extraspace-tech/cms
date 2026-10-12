@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using ExtraSpace.Api.Tests.TestSupport;
@@ -40,6 +41,42 @@ public sealed class ErrorTests(ApiFactory api)
     {
         using var content = new StringContent("{ \"email\": ", Encoding.UTF8, "application/json");
         await Problem.ReadAsync(await _client.PostAsync("/test/validate", content, Ct), 400, "VALIDATION_FAILED");
+    }
+
+    [Fact]
+    public async Task Validation_error_is_json_for_a_non_json_client()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/test/validate") { Content = JsonContent.Create(new { email = "not-an-email", count = 99 }) };
+        request.Headers.Accept.ParseAdd("text/html");
+        var errors = (await Problem.ReadAsync(await _client.SendAsync(request, Ct), 400, "VALIDATION_FAILED")).GetProperty("errors");
+        errors.TryGetProperty("email", out _).Should().BeTrue();
+        errors.TryGetProperty("count", out _).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Unknown_route_is_json_for_a_non_json_client()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/no/such/route");
+        request.Headers.Accept.ParseAdd("text/html");
+        var body = await Problem.ReadAsync(await _client.SendAsync(request, Ct), 404, "NOT_FOUND");
+        body.GetProperty("title").GetString().Should().Be("Not Found");
+    }
+
+    [Fact]
+    public async Task Undefined_enum_in_the_query_is_a_validation_error()
+    {
+        var body = await Problem.ReadAsync(await _client.GetAsync("/test/enum-filter?filter=5", Ct), 400, "VALIDATION_FAILED");
+        body.GetProperty("errors").TryGetProperty("filter", out _).Should().BeTrue();
+        (await _client.GetAsync("/test/enum-filter?filter=Archived", Ct)).StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Enum_number_in_the_body_is_a_validation_error()
+    {
+        using var number = new StringContent("{\"status\":5}", Encoding.UTF8, "application/json");
+        await Problem.ReadAsync(await _client.PostAsync("/test/enum", number, Ct), 400, "VALIDATION_FAILED");
+        using var name = new StringContent("{\"status\":\"Archived\"}", Encoding.UTF8, "application/json");
+        (await _client.PostAsync("/test/enum", name, Ct)).StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]
