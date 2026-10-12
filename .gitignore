@@ -1,0 +1,16 @@
+bin/
+obj/
+*.user
+.vs/
+.idea/
+.vscode/
+TestResults/
+cdk.out/
+cdk.context.json
+node_modules/
+src/ExtraSpace.Api/wwwroot/admin/
+.env
+.env.*
+appsettings.*.local.json
+*.pem
+.DS_Store

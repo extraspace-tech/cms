@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/infra/">
+    <Project Path="infra/ExtraSpace.Infra/ExtraSpace.Infra.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ExtraSpace.Infra.Tests/ExtraSpace.Infra.Tests.csproj" />
+  </Folder>
+</Solution>
