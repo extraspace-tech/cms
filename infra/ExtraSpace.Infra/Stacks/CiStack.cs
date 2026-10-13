@@ -8,7 +8,13 @@ namespace ExtraSpace.Infra.Stacks;
 /// <summary>What GitHub Actions needs, once for the account: the OIDC provider, the image repository and one deploy role per environment.</summary>
 public sealed class CiStack : Stack
 {
-    public const string GitHubRepo = "extraspace-tech/cms";
+    // GitHub puts the numeric ids into the token's subject. A move to another account or repository changes all four.
+    private const string GitHubOwner = "extraspace-tech";
+    private const string GitHubOwnerId = "119834034";
+    private const string GitHubRepoName = "cms";
+    private const string GitHubRepoId = "1410108364";
+    public const string GitHubRepo = $"{GitHubOwner}/{GitHubRepoName}";
+    private const string GitHubSubjectRepo = $"{GitHubOwner}@{GitHubOwnerId}/{GitHubRepoName}@{GitHubRepoId}";
     public const string RepositoryName = "extraspace/api";
     private const string GitHubIssuer = "token.actions.githubusercontent.com";
 
@@ -57,7 +63,7 @@ public sealed class CiStack : Stack
                 ["StringEquals"] = new Dictionary<string, object>
                 {
                     [$"{GitHubIssuer}:aud"] = "sts.amazonaws.com",
-                    [$"{GitHubIssuer}:sub"] = $"repo:{GitHubRepo}:environment:{env}",
+                    [$"{GitHubIssuer}:sub"] = $"repo:{GitHubSubjectRepo}:environment:{env}",
                 },
             }),
         });

@@ -80,7 +80,7 @@ public class CiStackTests
                             ["StringEquals"] = new Dictionary<string, object>
                             {
                                 ["token.actions.githubusercontent.com:aud"] = "sts.amazonaws.com",
-                                ["token.actions.githubusercontent.com:sub"] = $"repo:extraspace-tech/cms:environment:{env}",
+                                ["token.actions.githubusercontent.com:sub"] = $"repo:extraspace-tech@119834034/cms@1410108364:environment:{env}",
                             },
                         },
                     }),
