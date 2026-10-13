@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using ExtraSpace.Api.Platform.Data;
 using ExtraSpace.Api.Platform.Errors;
 using ExtraSpace.Api.Platform.Http;
+using ExtraSpace.Api.Platform.Jobs;
 using ExtraSpace.Api.Platform.Logging;
 using ExtraSpace.Api.Platform.Tracing;
 using Microsoft.AspNetCore.DataProtection;
@@ -40,6 +41,9 @@ public static class PlatformServices
             .AddInterceptors(sp.GetRequiredService<TimestampsInterceptor>(), sp.GetRequiredService<SlowQueryInterceptor>()));
         services.AddDataProtection().SetApplicationName("ExtraSpace").PersistKeysToDbContext<AppDbContext>();
         services.AddHealthChecks().AddDbContextCheck<AppDbContext>("database", tags: ["ready"]);
+
+        // Jobs (S0 spec §7)
+        services.AddPlatformJobs(configuration);
 
         // Errors and endpoints (S0 spec §4.1)
         ActivitySetup.EnsureRequestActivities();

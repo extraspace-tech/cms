@@ -1,3 +1,5 @@
+using ExtraSpace.Api.Features.Identity;
+using ExtraSpace.Api.Integrations.Email;
 using ExtraSpace.Api.Platform.Health;
 using ExtraSpace.Api.Platform.Hosting;
 using ExtraSpace.Api.Platform.Http;
@@ -7,6 +9,8 @@ using ExtraSpace.Api.Platform.Tracing;
 var builder = WebApplication.CreateBuilder(args);
 builder.AddPlatformLogging();
 builder.Services.AddPlatform(builder.Configuration);
+builder.Services.AddEmail(builder.Configuration, builder.Environment);
+builder.Services.AddIdentityFeature(builder.Configuration);
 
 var app = builder.Build();
 
@@ -31,7 +35,9 @@ app.UseRateLimiter();                               // 10
 app.UseMiddleware<AppVersionMiddleware>();          // 11
 app.UseAuthentication();                            // 12
 app.UseAuthorization();                             // 13
-                                                    // 14: feature endpoints (S0-3 on), each Features/<X>/<X>Endpoints.cs
+                                                    // 14: feature endpoints, each Features/<X>/<X>Endpoints.cs; groups only, never handlers here
+var api = app.MapGroup("/api/v1").RequireCustomer().WithEnumGuard();   // customer API; public routes opt out with .AllowAnonymous()
+api.MapIdentityEndpoints();
 foreach (var mapper in app.Services.GetServices<IEndpointMapper>()) mapper.Map(app);
 app.MapHealthEndpoints();
 if (!app.Environment.IsProduction()) app.MapOpenApi();

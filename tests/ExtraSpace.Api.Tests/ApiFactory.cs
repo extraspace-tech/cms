@@ -1,3 +1,4 @@
+using ExtraSpace.Api.Integrations.Email;
 using ExtraSpace.Api.Platform.Data;
 using ExtraSpace.Api.Platform.Hosting;
 using ExtraSpace.Api.Tests.TestSupport;
@@ -32,6 +33,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     public LogCapture Logs { get; } = new();
 
+    public FakeEmailTransport Emails { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -39,9 +42,14 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("App:MinVersion:ios", "2.0.0");
         builder.UseSetting("App:MinVersion:android", "2.0.0");
         builder.UseSetting("Cors:AllowedOrigins:0", "https://app.example.test");
+        builder.UseSetting("Jobs:QueuePollInterval", "00:00:00.200");
+        builder.UseSetting("Email:Transport", "None");
+        builder.UseSetting("CustomerAuth:SigningKey", IdentityTestData.SigningKey);
         builder.ConfigureTestServices(services =>
         {
             services.AddSingleton<IEndpointMapper, TestEndpoints>();
+            services.AddTransient<TestJobs>();
+            services.AddSingleton<IEmailTransport>(Emails);
             // The validation generator only sees endpoint types of the compilation that calls AddValidation (TestBody lives here).
             services.AddValidation();
             services.AddSingleton<Serilog.Core.ILogEventSink>(Logs);
@@ -51,6 +59,17 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
                 w.Window = TimeSpan.FromMinutes(1);
             }));
         });
+    }
+
+    private static int _ip;
+
+    /// <summary>A client with its own X-Forwarded-For address, so per-IP limits of one test never hit another.</summary>
+    public HttpClient ClientWithIp()
+    {
+        var n = Interlocked.Increment(ref _ip);
+        var client = CreateClient();
+        client.DefaultRequestHeaders.Add("X-Forwarded-For", $"10.{(n >> 16) & 255}.{(n >> 8) & 255}.{n & 255}");
+        return client;
     }
 
     /// <summary>A fresh empty database in the same container, for tests that need their own tables.</summary>

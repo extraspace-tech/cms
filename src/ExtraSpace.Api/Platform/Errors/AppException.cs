@@ -6,4 +6,7 @@ public sealed class AppException(int status, string code, string title) : Except
     public int Status { get; } = status;
     public string Code { get; } = code;
     public string Title { get; } = title;
+
+    /// <summary>Written as the Retry-After header (whole seconds, rounded up); for 429 answers.</summary>
+    public TimeSpan? RetryAfter { get; init; }
 }

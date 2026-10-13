@@ -58,9 +58,37 @@ public sealed class ApiDocsTests(ApiFactory api)
     }
 
     [Fact]
+    public async Task The_document_declares_the_bearer_scheme()
+    {
+        var client = api.CreateClient();
+        var document = await client.GetFromJsonAsync<JsonElement>("/openapi/v1.json", Ct);
+        var bearer = document.GetProperty("components").GetProperty("securitySchemes").GetProperty("Bearer");
+        bearer.GetProperty("type").GetString().Should().Be("http");
+        bearer.GetProperty("scheme").GetString().Should().Be("bearer");
+        bearer.GetProperty("bearerFormat").GetString().Should().Be("JWT");
+    }
+
+    [Fact]
+    public async Task Only_routes_that_need_sign_in_require_the_bearer_scheme()
+    {
+        var client = api.CreateClient();
+        var document = await client.GetFromJsonAsync<JsonElement>("/openapi/v1.json", Ct);
+        document.TryGetProperty("security", out _).Should().BeFalse("the requirement is per operation, not document-wide");
+        var paths = document.GetProperty("paths");
+
+        var me = paths.GetProperty("/api/v1/me").GetProperty("get").GetProperty("security");
+        me.EnumerateArray().Should().ContainSingle().Which.TryGetProperty("Bearer", out _).Should().BeTrue();
+        paths.GetProperty("/api/v1/auth/code").GetProperty("post").TryGetProperty("security", out _).Should().BeFalse();
+        if (paths.TryGetProperty("/health/live", out var health))
+            health.EnumerateObject().Where(o => o.Value.TryGetProperty("security", out _)).Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task Production_serves_neither()
     {
-        await using var production = api.WithWebHostBuilder(b => b.UseEnvironment("Production"));
+        // Email:Transport=None is refused outside Testing; Ses only builds a client here (nothing is sent).
+        await using var production = api.WithWebHostBuilder(b => b.UseEnvironment("Production").UseSetting("App:Role", "Api")
+            .UseSetting("Email:Transport", "Ses").UseSetting("Email:From", "ExtraSpace <no-reply@example.test>"));
         var client = production.CreateClient();
         (await client.GetAsync("/openapi/v1.json", Ct)).StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await client.GetAsync("/swagger/index.html", Ct)).StatusCode.Should().Be(HttpStatusCode.NotFound);

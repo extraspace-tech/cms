@@ -4,11 +4,19 @@
     <UserSecretsId>extraspace-api</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="AWSSDK.Extensions.NETCore.Setup" />
+    <PackageReference Include="AWSSDK.SimpleEmailV2" />
     <PackageReference Include="EFCore.NamingConventions" />
+    <PackageReference Include="Hangfire.AspNetCore" />
+    <PackageReference Include="Hangfire.Core" />
+    <PackageReference Include="Hangfire.PostgreSql" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
+    <!-- Hangfire.Core asks for Newtonsoft.Json 11.0.1, which has a known high-severity advisory (NU1903). -->
+    <PackageReference Include="Newtonsoft.Json" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="Serilog.AspNetCore" />
     <PackageReference Include="Serilog.Expressions" />
@@ -17,6 +25,9 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../ExtraSpace.Engines/ExtraSpace.Engines.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Integrations/Email/Templates/*" LogicalName="email/%(Filename)%(Extension)" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="ExtraSpace.Api.Tests" />

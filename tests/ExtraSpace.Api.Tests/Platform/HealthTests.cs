@@ -19,7 +19,7 @@ public sealed class HealthTests(ApiFactory api)
     public async Task Ready_is_503_and_live_stays_200_when_the_database_is_down()
     {
         await using var broken = api.WithWebHostBuilder(b =>
-            b.UseSetting("ConnectionStrings:Default", "Host=127.0.0.1;Port=1;Database=x;Username=x;Timeout=2"));
+            b.UseSetting("ConnectionStrings:Default", "Host=127.0.0.1;Port=1;Database=x;Username=x;Timeout=2").UseSetting("App:Role", "Api"));
         var client = broken.CreateClient();
         (await client.GetAsync("/health/live", TestContext.Current.CancellationToken)).StatusCode.Should().Be(HttpStatusCode.OK);
         (await client.GetAsync("/health/ready", TestContext.Current.CancellationToken)).StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);

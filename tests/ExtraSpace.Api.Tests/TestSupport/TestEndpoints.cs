@@ -1,9 +1,11 @@
 using System.ComponentModel.DataAnnotations;
+using ExtraSpace.Api.Integrations.Email;
 using ExtraSpace.Api.Platform.Data;
 using ExtraSpace.Api.Platform.Errors;
 using ExtraSpace.Api.Platform.Hosting;
 using ExtraSpace.Api.Platform.Http;
 using ExtraSpace.Api.Platform.Logging;
+using Hangfire;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Http;
@@ -42,6 +44,19 @@ internal sealed class TestEndpoints : IEndpointMapper
             RequestLog.Add(http, "customerId", "c-123");
             logger.LogInformation("Customer did a thing");
             return TypedResults.Ok();
+        });
+        test.MapPost("/jobs/{kind}", (string kind, IBackgroundJobClient jobs) =>
+        {
+            var marker = Guid.NewGuid().ToString("N");
+            var jobId = kind == "fail" ? jobs.Enqueue<TestJobs>(j => j.Fail(marker)) : jobs.Enqueue<TestJobs>(j => j.Ok(marker));
+            return TypedResults.Ok(new { jobId, marker });
+        });
+        test.MapPost("/email", (string to, string code, int? validForMs, IEmailSender email) =>
+        {
+            var jobId = email.Enqueue(new EmailMessage("login-code", to,
+                new Dictionary<string, string> { ["code"] = code, ["minutes"] = "10" },
+                TimeSpan.FromMilliseconds(validForMs ?? 600_000)));
+            return TypedResults.Ok(new { jobId });
         });
     }
 

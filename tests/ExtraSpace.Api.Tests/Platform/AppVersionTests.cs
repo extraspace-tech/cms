@@ -54,7 +54,7 @@ public sealed class AppVersionTests(ApiFactory api)
     [Fact]
     public async Task A_minimum_that_is_not_a_version_stops_the_app_at_start()
     {
-        await using var misconfigured = api.WithWebHostBuilder(b => b.UseSetting("App:MinVersion:web", "garbage"));
+        await using var misconfigured = api.WithWebHostBuilder(b => b.UseSetting("App:MinVersion:web", "garbage").UseSetting("App:Role", "Api"));
         var start = () => misconfigured.CreateClient();
         start.Should().Throw<Exception>()
             .Which.ToString().Should().Contain("App:MinVersion values must be versions like 1.4.0");

@@ -28,4 +28,19 @@ public sealed class LogCapture : ILogEventSink
             .Select(line => JsonDocument.Parse(line).RootElement)
             .Where(e => e.TryGetProperty("traceId", out var t) && t.GetString() == traceId)
             .ToList();
+
+    public IReadOnlyList<JsonElement> All() => _lines.Select(line => JsonDocument.Parse(line).RootElement).ToList();
+
+    /// <summary>Waits until <paramref name="count"/> lines match (jobs log on a worker thread, after the request returned).</summary>
+    public async Task<IReadOnlyList<JsonElement>> WaitForAsync(Func<JsonElement, bool> match, int count = 1, int timeoutSeconds = 20)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(timeoutSeconds);
+        while (true)
+        {
+            var found = All().Where(match).ToList();
+            if (found.Count >= count) return found;
+            if (DateTime.UtcNow > deadline) throw new TimeoutException($"Expected {count} matching log lines, found {found.Count}.");
+            await Task.Delay(100);
+        }
+    }
 }

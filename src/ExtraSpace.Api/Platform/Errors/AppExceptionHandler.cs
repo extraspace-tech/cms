@@ -1,3 +1,4 @@
+using ExtraSpace.Api.Platform.Http;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +21,8 @@ internal sealed partial class AppExceptionHandler(IProblemDetailsService problem
         if (status >= 500) LogUnhandled(logger, exception);
 
         http.Response.StatusCode = status;
+        if (exception is AppException { RetryAfter: { } retryAfter })
+            http.Response.Headers.RetryAfter = RateLimitSetup.RetryAfterSeconds(retryAfter);
         var problem = new ProblemDetails { Status = status, Title = title };
         problem.Extensions["code"] = code;
         await problems.TryWriteAsync(new ProblemDetailsContext { HttpContext = http, ProblemDetails = problem });
