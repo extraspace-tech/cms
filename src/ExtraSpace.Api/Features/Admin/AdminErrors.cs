@@ -14,4 +14,5 @@ internal static class AdminErrors
     public static AppException CannotDeactivateSelf() => new(409, "CANNOT_DEACTIVATE_SELF", "You cannot deactivate yourself.");
     public static AppException SystemRole() => new(409, "SYSTEM_ROLE", "System roles cannot be changed or deleted.");
     public static AppException RoleInUse() => new(409, "ROLE_IN_USE", "Staff still hold this role. Move them to another role first.");
+    public static AppException RoleNameTaken() => new(409, "ROLE_NAME_TAKEN", "A role with this name already exists.");
 }

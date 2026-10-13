@@ -68,7 +68,12 @@ public static class PlatformServices
         // The default is true only in Development; true everywhere sends every bad body through AppExceptionHandler.
         services.Configure<RouteHandlerOptions>(o => o.ThrowOnBadRequest = true);
         // The one JSON option set: endpoint responses and the OpenAPI document both read it.
-        services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter(allowIntegerValues: false)));
+        services.ConfigureHttpJsonOptions(o =>
+        {
+            o.SerializerOptions.Converters.Add(new JsonStringEnumConverter(allowIntegerValues: false));
+            // The web default also reads "5" as 5, and the OpenAPI document then types every integer as integer | string.
+            o.SerializerOptions.NumberHandling = JsonNumberHandling.Strict;
+        });
 
         // Pipeline (S0 spec §4.2)
         services.Configure<ForwardedHeadersOptions>(o =>
@@ -78,6 +83,7 @@ public static class PlatformServices
             o.KnownIPNetworks.Clear();   // only the ALB can reach the tasks (security groups), and its IPs change
             o.KnownProxies.Clear();
         });
+        services.Configure<StaticFileOptions>(AdminSpa.ConfigureStaticFiles);
         var corsOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
         services.AddCors(o => o.AddDefaultPolicy(p => p
             .WithOrigins(corsOrigins).AllowAnyHeader().AllowAnyMethod().WithExposedHeaders(RequestTrace.HeaderName, "Retry-After")));
@@ -96,7 +102,7 @@ public static class PlatformServices
                     schema.Enum = schema.Enum.Where(e => e is not null && e.GetValueKind() != JsonValueKind.Null).ToList();
             }
             return Task.CompletedTask;
-        }));
+        }).AddRequiredNotNull().AddProblemResponses());
         return services;
     }
 }

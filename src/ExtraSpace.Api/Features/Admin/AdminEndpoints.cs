@@ -71,7 +71,7 @@ internal static class AdminEndpoints
 
     private static Ok<AdminMeResponse> GetMe(HttpContext http) =>
         http.StaffSession() is { } s
-            ? TypedResults.Ok(new AdminMeResponse(s.Id, s.Email, s.DisplayName, s.RoleId, s.RoleName, s.Permissions))
+            ? TypedResults.Ok(new AdminMeResponse(s.Id, s.Email, s.DisplayName, s.RoleId, s.RoleName, s.IsOwner, s.Permissions))
             : throw AdminErrors.Unauthenticated();
 
     private static StaffSession Actor(HttpContext http) => http.StaffSession() ?? throw AdminErrors.Unauthenticated();

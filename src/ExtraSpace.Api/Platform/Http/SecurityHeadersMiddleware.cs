@@ -11,6 +11,7 @@ internal sealed class SecurityHeadersMiddleware(RequestDelegate next, IHostEnvir
             headers.XContentTypeOptions = "nosniff";
             headers.XFrameOptions = "DENY";
             headers["Referrer-Policy"] = "no-referrer";
+            if (AdminSpa.IsPage(http.Request.Path)) headers.ContentSecurityPolicy = AdminSpa.Csp;
             if (!environment.IsDevelopment()) headers.StrictTransportSecurity = "max-age=31536000";
             return Task.CompletedTask;
         });

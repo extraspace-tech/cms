@@ -204,4 +204,15 @@ public sealed class OwnerRulesTests(ApiFactory api)
         permissions.Should().Equal(api.Services.GetRequiredService<PermissionCatalog>().Names);
         permissions.Should().Contain([AdminPermissions.StaffManage, AdminPermissions.RolesManage, AdminPermissions.AuditRead, AdminPermissions.JobsManage]);
     }
+
+    [Fact]
+    public async Task Me_marks_an_owner()
+    {
+        await api.ClearOwnersAsync();
+        var (client, _) = await OwnerAsync();
+
+        var me = await client.GetFromJsonAsync<JsonElement>("/admin/api/me", Ct);
+
+        me.GetProperty("isOwner").GetBoolean().Should().BeTrue();
+    }
 }

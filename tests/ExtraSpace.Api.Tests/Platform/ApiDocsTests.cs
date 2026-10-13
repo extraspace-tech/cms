@@ -85,6 +85,101 @@ public sealed class ApiDocsTests(ApiFactory api)
             health.EnumerateObject().Where(o => o.Value.TryGetProperty("security", out _)).Should().BeEmpty();
     }
 
+    private static IEnumerable<JsonElement> Walk(JsonElement element)
+    {
+        yield return element;
+        var children = element.ValueKind switch
+        {
+            JsonValueKind.Object => element.EnumerateObject().Select(p => p.Value),
+            JsonValueKind.Array => element.EnumerateArray(),
+            _ => [],
+        };
+        foreach (var child in children)
+            foreach (var nested in Walk(child))
+                yield return nested;
+    }
+
+    [Fact]
+    public async Task Numbers_are_never_documented_as_number_or_string()
+    {
+        var document = await api.CreateClient().GetFromJsonAsync<JsonElement>("/openapi/v1.json", Ct);
+        var mixed = Walk(document)
+            .Where(e => e.ValueKind == JsonValueKind.Object && e.TryGetProperty("type", out var type) && type.ValueKind == JsonValueKind.Array)
+            .Select(e => e.GetProperty("type").EnumerateArray().Select(t => t.GetString()).ToList())
+            .Where(types => types.Contains("string") && (types.Contains("integer") || types.Contains("number")));
+        mixed.Should().BeEmpty("generated clients would type every number as number | string");
+    }
+
+    [Fact]
+    public async Task Every_operation_documents_the_problem_body()
+    {
+        var document = await api.CreateClient().GetFromJsonAsync<JsonElement>("/openapi/v1.json", Ct);
+        var problem = document.GetProperty("components").GetProperty("schemas").GetProperty("Problem");
+        problem.GetProperty("properties").EnumerateObject().Select(p => p.Name)
+            .Should().BeEquivalentTo(["type", "title", "status", "detail", "instance", "code", "traceId", "errors"]);
+        problem.GetProperty("required").EnumerateArray().Select(r => r.GetString())
+            .Should().BeEquivalentTo(["title", "status", "code", "traceId"]);
+
+        string[] methods = ["get", "post", "put", "patch", "delete"];
+        var operations = document.GetProperty("paths").EnumerateObject()
+            .SelectMany(path => path.Value.EnumerateObject().Where(o => methods.Contains(o.Name)).Select(o => (Path: path.Name, Operation: o)))
+            .ToList();
+        operations.Should().NotBeEmpty();
+        foreach (var (path, operation) in operations)
+            operation.Value.GetProperty("responses").GetProperty("default").GetProperty("content")
+                .GetProperty("application/problem+json").GetProperty("schema").GetProperty("$ref").GetString()
+                .Should().Be("#/components/schemas/Problem", $"{operation.Name} {path}");
+    }
+
+    [Theory]
+    [InlineData("UpdateStaffBody", "version", false)]   // [Required] uint?
+    [InlineData("StaffCodeBody", "email", false)]       // [Required] string?
+    [InlineData("AddStaffBody", "roleId", false)]       // [Required] Guid?
+    [InlineData("UpdateStaffBody", "roleId", true)]     // optional: null = unchanged
+    [InlineData("StaffResponse", "lastSignInAt", true)] // always present in a response, and really null at times
+    [InlineData("AdminMeResponse", "displayName", true)]
+    public async Task Only_fields_marked_required_lose_null(string schema, string property, bool nullable)
+    {
+        var document = await api.CreateClient().GetFromJsonAsync<JsonElement>("/openapi/v1.json", Ct);
+        var type = document.GetProperty("components").GetProperty("schemas").GetProperty(schema)
+            .GetProperty("properties").GetProperty(property).GetProperty("type");
+        var types = type.ValueKind == JsonValueKind.Array ? type.EnumerateArray().Select(t => t.GetString()).ToList() : [type.GetString()];
+        types.Contains("null").Should().Be(nullable, $"{schema}.{property}");
+    }
+
+    [Theory]
+    [InlineData("TestInnerBody", "name", false)]           // a body reached only as another body's property
+    [InlineData("TestInnerBody", "note", true)]
+    [InlineData("TestOuterBody", "inner", false)]          // [Required] nested body
+    [InlineData("TestOuterBody", "status", false)]         // [Required] nullable enum
+    [InlineData("TestOuterBody", "optionalInner", true)]
+    [InlineData("TestOuterBody", "optionalStatus", true)]
+    public async Task Required_also_removes_null_from_nested_bodies_and_references(string schema, string property, bool nullable)
+    {
+        var document = await api.CreateClient().GetFromJsonAsync<JsonElement>("/openapi/v1.json", Ct);
+        var schemas = document.GetProperty("components").GetProperty("schemas");
+        var documented = schemas.GetProperty(schema).GetProperty("properties").GetProperty(property);
+
+        // A nullable reference is `oneOf: [null, $ref]`; a nullable inline type lists "null" in its own `type`.
+        var variants = documented.TryGetProperty("oneOf", out var oneOf) ? oneOf.EnumerateArray().ToList() : [documented];
+        variants.Any(IsNull).Should().Be(nullable, $"{schema}.{property} is {documented.GetRawText()}");
+        variants.Any(v => v.TryGetProperty("$ref", out _) || !IsOnlyNull(v)).Should().BeTrue("a real type must be left");
+
+        static bool IsNull(JsonElement s) => s.TryGetProperty("type", out var type) && type.ValueKind switch
+        {
+            JsonValueKind.Array => type.EnumerateArray().Any(t => t.GetString() == "null"),
+            _ => type.GetString() == "null",
+        };
+        static bool IsOnlyNull(JsonElement s) => s.GetProperty("type") is { ValueKind: JsonValueKind.String } type && type.GetString() == "null";
+    }
+
+    [Fact]
+    public async Task The_admin_page_fallback_is_not_in_the_document()
+    {
+        var document = await api.CreateClient().GetFromJsonAsync<JsonElement>("/openapi/v1.json", Ct);
+        document.GetProperty("paths").EnumerateObject().Select(p => p.Name).Should().NotContain(p => p.Contains("{path}") || p.Contains("{*path"));
+    }
+
     [Fact]
     public async Task Production_serves_neither()
     {
