@@ -1,7 +1,7 @@
 # Base images are pinned by tag and multi-arch index digest; Dependabot raises both together.
 
 # 1. The admin UI. The build writes to ../src/ExtraSpace.Api/wwwroot/admin, so the stage keeps the repo layout.
-FROM node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d AS ui
+FROM node:24.21.0-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20 AS ui
 WORKDIR /repo/admin-ui
 COPY admin-ui/package.json admin-ui/package-lock.json ./
 RUN npm ci
