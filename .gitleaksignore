@@ -1,0 +1,2 @@
+# The public, test-only JWT signing key of the test suite (IdentityTestData.SigningKey). Not a secret.
+9c678ce1c71cbaaa1dec0f598df81923d1b52bc0:tests/ExtraSpace.Api.Tests/TestSupport/IdentityTestData.cs:generic-api-key:15

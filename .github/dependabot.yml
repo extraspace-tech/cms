@@ -1,0 +1,16 @@
+version: 2
+updates:
+  # Actions only: it keeps the commit pins of the deploy workflows current.
+  # No npm or nuget here: a version bot must not raise pinned packages (TypeScript stays on 6).
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  # The Dockerfile's base images: tag and digest pins. Node stays 24 and .NET stays 10.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]

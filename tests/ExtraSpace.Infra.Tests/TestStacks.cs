@@ -14,7 +14,7 @@ internal static class TestStacks
     {
         lock (Gate)
         {
-            _stacks ??= InfraComposer.Compose(new App(), FakeAccount);
+            _stacks ??= InfraComposer.Compose(new App(), FakeAccount, TestInputs.For);
             return _stacks[stackName];
         }
     }

@@ -19,6 +19,10 @@ internal static class AdminSpa
     public static bool IsPage(PathString path) =>
         path.StartsWithSegments("/admin") && !path.StartsWithSegments("/admin/api") && !path.StartsWithSegments("/admin/jobs");
 
+    // UI files only: API and dashboard answers carry tokens, and compressing those over HTTPS is the BREACH pattern.
+    public static IApplicationBuilder UseAdminUiCompression(this IApplicationBuilder app) =>
+        app.UseWhen(http => IsPage(http.Request.Path), ui => ui.UseResponseCompression());
+
     // Vite puts a content hash in every name under assets/, so those never change; index.html must be re-checked.
     public static void ConfigureStaticFiles(StaticFileOptions options) =>
         options.OnPrepareResponse = context => context.Context.Response.Headers.CacheControl =

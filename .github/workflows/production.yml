@@ -1,0 +1,95 @@
+name: Deploy production
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Image tag (full commit SHA on main) to promote. Empty = the tag running on staging now.
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  production:
+    name: Promote an image to production
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 45
+    # Required reviewers on this GitHub environment are the approval gate. Run the schema script first (setup guide C3).
+    environment: production
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ap-southeast-1
+      REPOSITORY: extraspace/api
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/es-ci-production
+          aws-region: ${{ env.AWS_REGION }}
+          mask-aws-account-id: true
+      - name: Pick the image
+        id: pick
+        env:
+          REQUESTED: ${{ inputs.tag }}
+        run: |
+          is_sha() { [[ "$1" =~ ^[0-9a-f]{40}$ ]]; }
+          staging_tag="$(aws ssm get-parameter --name /es/staging/app/image-tag --query Parameter.Value --output text 2>/dev/null)" || staging_tag=""
+          is_sha "$staging_tag" || staging_tag=""
+          tag="${REQUESTED:-$staging_tag}"
+          if [ -z "$tag" ]; then
+            echo "::error::No tag was given and the staging tag could not be read."
+            exit 1
+          fi
+          if ! is_sha "$tag"; then
+            echo "::error::The tag is not a full commit SHA (40 lowercase hex characters)."
+            exit 1
+          fi
+          # Only a commit on main may reach production.
+          if ! git merge-base --is-ancestor "$tag" origin/main 2>/dev/null; then
+            echo "::error::The tag is not a commit on main."
+            exit 1
+          fi
+          if [ "$tag" != "$staging_tag" ]; then
+            echo "::warning::Promoting ${tag}, typed by hand. Staging runs ${staging_tag:-an unknown tag}."
+          fi
+          if ! aws ecr describe-images --repository-name "$REPOSITORY" --image-ids imageTag="$tag" >/dev/null 2>&1; then
+            echo "::error::The registry has no image with this tag."
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+      - name: Mark the image as a production image
+        env:
+          TAG: ${{ steps.pick.outputs.tag }}
+        run: |
+          # prod-<sha> puts the image under the lifecycle rule that keeps production images apart.
+          if aws ecr describe-images --repository-name "$REPOSITORY" --image-ids imageTag="prod-$TAG" >/dev/null 2>&1; then
+            echo "The image is already marked."
+            exit 0
+          fi
+          image="$RUNNER_TEMP/image.json"
+          if ! aws ecr batch-get-image --repository-name "$REPOSITORY" --image-ids imageTag="$TAG" \
+              --query 'images[0].{manifest:imageManifest,mediaType:imageManifestMediaType}' --output json > "$image" 2>/dev/null; then
+            echo "::error::Reading the image manifest failed."
+            exit 1
+          fi
+          if ! aws ecr put-image --repository-name "$REPOSITORY" --image-tag "prod-$TAG" \
+              --image-manifest "$(jq -r '.manifest' "$image")" \
+              --image-manifest-media-type "$(jq -r '.mediaType' "$image")" >/dev/null 2>&1; then
+            echo "::error::Marking the image failed."
+            exit 1
+          fi
+      - name: Roll out
+        env:
+          TAG: ${{ steps.pick.outputs.tag }}
+        run: .github/scripts/deploy.sh production "$TAG"
