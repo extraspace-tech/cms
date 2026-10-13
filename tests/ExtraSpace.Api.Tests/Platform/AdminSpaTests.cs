@@ -1,4 +1,5 @@
 using System.Net;
+using ExtraSpace.Api.Features.Admin;
 using ExtraSpace.Api.Platform.Http;
 using ExtraSpace.Api.Tests.TestSupport;
 using Microsoft.AspNetCore.Builder;
@@ -77,6 +78,47 @@ public sealed class AdminSpaTests : IDisposable
         response.Content.Headers.ContentType!.MediaType.Should().Be("text/javascript");
         response.Headers.CacheControl!.ToString().Should().Be("public, max-age=31536000, immutable");
         response.Headers.GetValues("Content-Security-Policy").Should().Equal(AdminSpa.Csp);
+    }
+
+    [Theory]
+    [InlineData("br")]
+    [InlineData("gzip")]
+    public async Task A_script_is_compressed_when_the_browser_asks(string encoding)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/admin/assets/app-abc123.js");
+        request.Headers.Add("Accept-Encoding", encoding);
+        var response = await _client.SendAsync(request, Ct);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Content.Headers.ContentEncoding.Should().Equal(encoding);
+        response.Headers.CacheControl!.ToString().Should().Contain("immutable");
+    }
+
+    [Fact]
+    public async Task Json_is_never_compressed()
+    {
+        // API responses carry tokens; compressing them over HTTPS is the BREACH pattern.
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/admin/api/nope");
+        request.Headers.Add("Accept-Encoding", "br, gzip");
+        var response = await _client.SendAsync(request, Ct);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        response.Content.Headers.ContentEncoding.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task The_jobs_dashboard_is_never_compressed()
+    {
+        // Its HTML carries the antiforgery token, and we do not control what those pages reflect.
+        var (client, _) = await _api.StaffClientAsync(AdminPermissions.JobsManage);
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/admin/jobs/recurring");
+        request.Headers.Add("Accept-Encoding", "br, gzip");
+        var response = await client.SendAsync(request, Ct);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Content.Headers.ContentType!.MediaType.Should().Be("text/html");
+        response.Content.Headers.ContentEncoding.Should().BeEmpty();
+        (await response.Content.ReadAsStringAsync(Ct)).Should().Contain("csrf-token");
     }
 
     [Fact]

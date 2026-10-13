@@ -1,0 +1,83 @@
+name: Deploy staging
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  staging:
+    name: Build, push and roll out to staging
+    needs: ci
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 45
+    # The AWS role trusts exactly this GitHub environment; the environment allows the main branch only.
+    environment: staging
+    concurrency:
+      group: deploy-staging
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ap-southeast-1
+      REPOSITORY: extraspace/api
+      TAG: ${{ github.sha }}
+      # A secret, not a variable: the host name must not show in the public log.
+      APP_HOST: ${{ secrets.APP_HOST }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The build runs npm and NuGet code, so it runs before the job holds any AWS access.
+      - name: Build
+        run: docker build -t es-api:build --build-arg VERSION="$TAG" .
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/es-ci-staging
+          aws-region: ${{ env.AWS_REGION }}
+          mask-aws-account-id: true
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2.1.7
+      - name: Push
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          # Tags are immutable: a re-run of the same commit must not push again.
+          if aws ecr describe-images --repository-name "$REPOSITORY" --image-ids imageTag="$TAG" >/dev/null 2>&1; then
+            echo "The image of this commit is already in the registry. Push skipped."
+            exit 0
+          fi
+          docker tag es-api:build "$REGISTRY/$REPOSITORY:$TAG"
+          if ! docker push --quiet "$REGISTRY/$REPOSITORY:$TAG" >/dev/null 2>&1; then
+            echo "::error::Pushing the image failed."
+            exit 1
+          fi
+      - name: Roll out
+        run: .github/scripts/deploy.sh staging "$TAG"
+      - name: Check the live site
+        if: env.APP_HOST != ''
+        run: |
+          # -s without -S: a curl error message would name the host.
+          if ! curl -fs --max-time 30 -o /dev/null "https://$APP_HOST/health/ready"; then
+            echo "::error::The live site is not ready (/health/ready)."
+            exit 1
+          fi
+          headers="$RUNNER_TEMP/admin-headers"
+          if ! curl -fs --max-time 30 -D "$headers" -o /dev/null "https://$APP_HOST/admin"; then
+            echo "::error::The admin page did not answer (/admin)."
+            exit 1
+          fi
+          if ! grep -qi "^content-security-policy: .*script-src 'self'" "$headers"; then
+            echo "::error::The admin page did not answer with the expected Content-Security-Policy header."
+            exit 1
+          fi
+      - name: Say that the live check was skipped
+        if: env.APP_HOST == ''
+        run: echo "::notice::The live check was skipped because the APP_HOST secret of this GitHub environment is not set."

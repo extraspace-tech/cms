@@ -222,4 +222,16 @@ public class DataStackTests
         template.HasOutput("DbMasterSecretName", new Dictionary<string, object> { ["Value"] = $"es/{env}/db-master" });
         template.HasOutput("BastionInstanceId", Match.AnyValue());
     }
+
+    [Fact]
+    public void The_app_enters_through_the_proxy_in_production_and_directly_in_staging()
+    {
+        var staging = (ExtraSpace.Infra.Stacks.DataStack)TestStacks.Stack("EsData-staging");
+        var production = (ExtraSpace.Infra.Stacks.DataStack)TestStacks.Stack("EsData-production");
+
+        Assert.Null(staging.ProxySecurityGroup);
+        Assert.Same(staging.DatabaseSecurityGroup, staging.AppEntrySecurityGroup);
+        Assert.NotNull(production.ProxySecurityGroup);
+        Assert.Same(production.ProxySecurityGroup, production.AppEntrySecurityGroup);
+    }
 }

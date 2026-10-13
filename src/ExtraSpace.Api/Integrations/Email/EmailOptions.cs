@@ -11,4 +11,12 @@ internal sealed class EmailOptions
 
     /// <summary>Sender, for example <c>ExtraSpace &lt;no-reply@…&gt;</c>; must be verified in SES (open item 3).</summary>
     public string From { get; set; } = "";
+
+    /// <summary>Exact addresses or <c>@domain</c> entries. Empty = everyone. Staging sets it, so a test never emails a real customer.</summary>
+    public string[] AllowedRecipients { get; set; } = [];
+
+    public bool Allows(string to) => AllowedRecipients.Length == 0 || AllowedRecipients.Any(entry =>
+        entry.StartsWith('@')
+            ? to.EndsWith(entry, StringComparison.OrdinalIgnoreCase)
+            : to.Equals(entry, StringComparison.OrdinalIgnoreCase));
 }

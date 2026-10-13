@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  pull_request:
+  workflow_call:
+
+# Public repo: these jobs hold no AWS access and no secret.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+
+jobs:
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      # --redact: a finding must never be printed into a public log.
+      - run: docker run --rm -v "$PWD:/repo" -w /repo ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f git --redact --no-banner .
+
+  dotnet:
+    name: Build and test (.NET, infra)
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - name: UPDATE_OPENAPI must never be set here
+        run: test -z "${UPDATE_OPENAPI:-}"
+      - run: dotnet build ExtraSpace.slnx -c Release
+      - name: Engines tests
+        run: dotnet test tests/ExtraSpace.Engines.Tests -c Release --no-build
+      - name: Infra tests (they synthesize every stack; this replaces cdk synth)
+        run: dotnet test tests/ExtraSpace.Infra.Tests -c Release --no-build
+      - name: API tests (PostgreSQL in Docker)
+        run: dotnet test tests/ExtraSpace.Api.Tests -c Release --no-build
+      - name: Deploy script tests
+        run: .github/scripts/deploy-test.sh
+
+  ui:
+    name: Admin UI
+    runs-on: ubuntu-24.04-arm
+    defaults:
+      run:
+        working-directory: admin-ui
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.18.0
+          cache: npm
+          cache-dependency-path: admin-ui/package-lock.json
+      - run: npm ci
+      - name: Generated API types are current
+        run: npm run check:api
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  image:
+    name: Image builds and starts
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18.6
+        env:
+          POSTGRES_DB: extraspace
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - run: docker build -t es-api:ci --build-arg VERSION="$GITHUB_SHA" .
+      - name: Migrate the throwaway database
+        run: |
+          dotnet tool restore
+          dotnet ef database update --project src/ExtraSpace.Api \
+            --connection "Host=localhost;Port=5432;Database=extraspace;Username=postgres"
+      - run: .github/scripts/smoke.sh es-api:ci

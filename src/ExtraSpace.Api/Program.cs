@@ -1,14 +1,17 @@
 using ExtraSpace.Api.Features.Admin;
 using ExtraSpace.Api.Features.Identity;
 using ExtraSpace.Api.Integrations.Email;
+using ExtraSpace.Api.Platform.Data;
 using ExtraSpace.Api.Platform.Health;
 using ExtraSpace.Api.Platform.Hosting;
 using ExtraSpace.Api.Platform.Http;
 using ExtraSpace.Api.Platform.Logging;
 using ExtraSpace.Api.Platform.Tracing;
 
+ContainerExit.ExitOnUnhandledException();
 var builder = WebApplication.CreateBuilder(args);
 builder.AddPlatformLogging();
+DatabaseConnection.Compose(builder.Configuration);
 builder.Services.AddPlatform(builder.Configuration, builder.Environment);
 builder.Services.AddEmail(builder.Configuration, builder.Environment);
 builder.Services.AddIdentityFeature(builder.Configuration);
@@ -24,6 +27,7 @@ app.UseExceptionHandler();                          // 4
 app.UseStatusCodePages();                           //   empty error responses become ProblemDetails
 app.UseMiddleware<SecurityHeadersMiddleware>();     // 5
                                                     // 6: no HTTPS redirection, TLS ends at the ALB
+app.UseAdminUiCompression();                        //   UI files only, never the API or the jobs dashboard
 app.UseStaticFiles();                               // 7: the built admin UI (wwwroot/admin)
 if (!app.Environment.IsProduction())                //    and Swagger UI outside production
     app.UseSwaggerUI(o =>

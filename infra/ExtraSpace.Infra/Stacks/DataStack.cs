@@ -27,6 +27,10 @@ public sealed class DataStack : Stack
     public ISecret AppUserSecret { get; }
     public ISecret ReadOnlyUserSecret { get; }
     public DatabaseProxy? Proxy { get; }
+    public ISecurityGroup? ProxySecurityGroup { get; }
+    /// <summary>Where the app connects: the RDS Proxy in production, the instance in staging.</summary>
+    public ISecurityGroup AppEntrySecurityGroup => ProxySecurityGroup ?? DatabaseSecurityGroup;
+    public string AppHost => Proxy?.Endpoint ?? Database.DbInstanceEndpointAddress;
     public BastionHostLinux Bastion { get; }
 
     public DataStack(Construct scope, string id, DataStackProps props) : base(scope, id, props)
@@ -157,6 +161,7 @@ public sealed class DataStack : Stack
                 Description = $"ExtraSpace {config.Name} RDS Proxy",
                 AllowAllOutbound = false,
             });
+            ProxySecurityGroup = proxySecurityGroup;
 
             Proxy = Database.AddProxy("Proxy", new DatabaseProxyOptions
             {

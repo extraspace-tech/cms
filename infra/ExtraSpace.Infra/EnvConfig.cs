@@ -10,7 +10,17 @@ public sealed record EnvConfig(
     int DbMaxAllocatedStorageGb,
     int DbBackupRetentionDays,
     bool DbProxy,
-    bool DbAdvancedInsights)
+    bool DbAdvancedInsights,
+    string AspNetEnvironment,
+    int ApiCpu,
+    int ApiMemoryMiB,
+    int ApiCount,
+    int ApiMaxCount,
+    bool SeparateJobs,
+    int JobsCpu,
+    int JobsMemoryMiB,
+    int LogRetentionDays,
+    int DbConnectionsAlarm)
 {
     public bool IsProduction => Name == "production";
 
@@ -25,7 +35,17 @@ public sealed record EnvConfig(
         DbMaxAllocatedStorageGb: 50,
         DbBackupRetentionDays: 7,
         DbProxy: false,
-        DbAdvancedInsights: false);
+        DbAdvancedInsights: false,
+        AspNetEnvironment: "Staging",
+        ApiCpu: 1024,
+        ApiMemoryMiB: 2048,
+        ApiCount: 1,
+        ApiMaxCount: 1,
+        SeparateJobs: false,          // one task runs both roles (App:Role=All)
+        JobsCpu: 0,
+        JobsMemoryMiB: 0,
+        LogRetentionDays: 14,
+        DbConnectionsAlarm: 150);
 
     public static readonly EnvConfig Production = new(
         Name: "production",
@@ -37,7 +57,17 @@ public sealed record EnvConfig(
         DbMaxAllocatedStorageGb: 200,
         DbBackupRetentionDays: 35,
         DbProxy: true,
-        DbAdvancedInsights: true);
+        DbAdvancedInsights: true,
+        AspNetEnvironment: "Production",
+        ApiCpu: 2048,
+        ApiMemoryMiB: 4096,
+        ApiCount: 2,
+        ApiMaxCount: 4,
+        SeparateJobs: true,
+        JobsCpu: 1024,
+        JobsMemoryMiB: 2048,
+        LogRetentionDays: 90,
+        DbConnectionsAlarm: 300);
 
     public static IReadOnlyList<EnvConfig> All { get; } = [Staging, Production];
 }

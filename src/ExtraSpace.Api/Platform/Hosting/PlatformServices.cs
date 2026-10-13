@@ -55,6 +55,8 @@ public static class PlatformServices
         else
             throw new InvalidOperationException("DataProtection:SsmPath must be set outside Development and Testing.");
         services.AddHealthChecks().AddDbContextCheck<AppDbContext>("database", tags: ["ready"]);
+        if (!environment.IsDevelopment() && !environment.IsEnvironment("Testing") && configuration.GetValue("Database:RequireMigrated", true))
+            services.AddHostedService<MigrationGuard>();
 
         // Jobs (S0 spec §7)
         services.AddPlatformJobs(configuration);
@@ -84,6 +86,12 @@ public static class PlatformServices
             o.KnownProxies.Clear();
         });
         services.Configure<StaticFileOptions>(AdminSpa.ConfigureStaticFiles);
+        // Static text only. JSON is left alone: API responses carry tokens (BREACH).
+        services.AddResponseCompression(o =>
+        {
+            o.EnableForHttps = true;
+            o.MimeTypes = ["text/html", "text/css", "text/javascript", "application/javascript", "image/svg+xml"];
+        });
         var corsOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
         services.AddCors(o => o.AddDefaultPolicy(p => p
             .WithOrigins(corsOrigins).AllowAnyHeader().AllowAnyMethod().WithExposedHeaders(RequestTrace.HeaderName, "Retry-After")));
