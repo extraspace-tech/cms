@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Amazon.SimpleSystemsManagement;
 using ExtraSpace.Api.Platform.Data;
 using ExtraSpace.Api.Platform.Errors;
 using ExtraSpace.Api.Platform.Http;
@@ -10,13 +11,14 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.OpenApi;
 
 namespace ExtraSpace.Api.Platform.Hosting;
 
 public static class PlatformServices
 {
-    public static IServiceCollection AddPlatform(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddPlatform(this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
     {
         services.AddOptions<AppOptions>().Bind(configuration.GetSection(AppOptions.Section))
             .Validate(o => o.MinVersion.Values.All(v => AppVersion.Parse(v) is not null), "App:MinVersion values must be versions like 1.4.0")
@@ -38,8 +40,20 @@ public static class PlatformServices
                 (CoreEventId.QueryIterationFailed, LogLevel.Debug),
                 (RelationalEventId.ConnectionError, LogLevel.Debug),
                 (RelationalEventId.TransactionError, LogLevel.Debug)))
-            .AddInterceptors(sp.GetRequiredService<TimestampsInterceptor>(), sp.GetRequiredService<SlowQueryInterceptor>()));
-        services.AddDataProtection().SetApplicationName("ExtraSpace").PersistKeysToDbContext<AppDbContext>();
+            .AddInterceptors(sp.GetRequiredService<TimestampsInterceptor>(), sp.GetRequiredService<SlowQueryInterceptor>())
+            .AddInterceptors(sp.GetServices<ISaveChangesInterceptor>()));   // feature interceptors (Admin audit), after the stamps
+        // The key ring signs admin cookies and encrypts email jobs: on AWS it lives in SSM (SecureString, KMS), never in the database.
+        var keyRing = services.AddDataProtection().SetApplicationName("ExtraSpace");
+        if (configuration["DataProtection:SsmPath"] is { Length: > 0 } ssmPath)
+        {
+            // Own client: the SES setup turns off SDK retries on the shared default AWS options.
+            services.TryAddSingleton(_ => configuration.GetAWSOptions().CreateServiceClient<IAmazonSimpleSystemsManagement>());
+            keyRing.PersistKeysToAWSSystemsManager(ssmPath);
+        }
+        else if (environment.IsDevelopment() || environment.IsEnvironment("Testing"))
+            keyRing.PersistKeysToDbContext<AppDbContext>();
+        else
+            throw new InvalidOperationException("DataProtection:SsmPath must be set outside Development and Testing.");
         services.AddHealthChecks().AddDbContextCheck<AppDbContext>("database", tags: ["ready"]);
 
         // Jobs (S0 spec §7)

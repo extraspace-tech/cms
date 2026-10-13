@@ -19,6 +19,9 @@ internal sealed partial class AppExceptionHandler(IProblemDetailsService problem
 
         var (status, code, title) = Classify(exception);
         if (status >= 500) LogUnhandled(logger, exception);
+        // Only the constraint name: the exception text carries the clashing values.
+        else if (PostgresError(exception) is { SqlState: PostgresErrorCodes.UniqueViolation or PostgresErrorCodes.ForeignKeyViolation } postgres)
+            LogConstraintConflict(logger, postgres.SqlState, postgres.ConstraintName);
 
         http.Response.StatusCode = status;
         if (exception is AppException { RetryAfter: { } retryAfter })
@@ -33,18 +36,22 @@ internal sealed partial class AppExceptionHandler(IProblemDetailsService problem
     {
         AppException app => (app.Status, app.Code, app.Title),
         DbUpdateConcurrencyException => (409, ErrorCodes.Conflict, "The record was changed by someone else. Reload and try again."),
-        _ when IsUniqueViolation(exception) => (409, ErrorCodes.Conflict, "A record with the same value already exists."),
+        _ when PostgresError(exception)?.SqlState == PostgresErrorCodes.UniqueViolation => (409, ErrorCodes.Conflict, "A record with the same value already exists."),
+        _ when PostgresError(exception)?.SqlState == PostgresErrorCodes.ForeignKeyViolation => (409, ErrorCodes.Conflict, "The record is still in use, or refers to one that no longer exists."),
         BadHttpRequestException bad => (bad.StatusCode, ErrorCodes.ForStatus(bad.StatusCode), "The request is invalid."),
         _ => (500, ErrorCodes.InternalError, "An unexpected error occurred."),
     };
 
-    private static bool IsUniqueViolation(Exception exception)
+    private static PostgresException? PostgresError(Exception exception)
     {
         for (var current = exception; current is not null; current = current.InnerException)
-            if (current is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation }) return true;
-        return false;
+            if (current is PostgresException postgres) return postgres;
+        return null;
     }
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Unhandled exception")]
     private static partial void LogUnhandled(ILogger logger, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Database constraint conflict {sqlState} on {constraint}")]
+    private static partial void LogConstraintConflict(ILogger logger, string sqlState, string? constraint);
 }

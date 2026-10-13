@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using ExtraSpace.Api.Features.Admin;
 using ExtraSpace.Api.Integrations.Email;
 using ExtraSpace.Api.Platform.Data;
 using ExtraSpace.Api.Platform.Errors;
@@ -6,6 +7,7 @@ using ExtraSpace.Api.Platform.Hosting;
 using ExtraSpace.Api.Platform.Http;
 using ExtraSpace.Api.Platform.Logging;
 using Hangfire;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Http;
@@ -58,6 +60,12 @@ internal sealed class TestEndpoints : IEndpointMapper
                 TimeSpan.FromMilliseconds(validForMs ?? 600_000)));
             return TypedResults.Ok(new { jobId });
         });
+        test.MapPost("/admin/sign-in/{staffId:guid}", async (Guid staffId, HttpContext http) =>
+        {
+            await http.SignInAsync(StaffAuth.CookieScheme, StaffAuth.PrincipalFor(staffId));
+            return TypedResults.NoContent();
+        });
+        test.MapGet("/admin/needs-audit", () => TypedResults.Ok()).RequireAuthorization(AdminPermissions.AuditRead);
     }
 
     private static async Task<Ok> Unique(AppDbContext db)

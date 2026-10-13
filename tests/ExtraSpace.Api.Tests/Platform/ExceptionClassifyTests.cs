@@ -16,6 +16,15 @@ public sealed class ExceptionClassifyTests
     }
 
     [Fact]
+    public void Wrapped_foreign_key_violation_is_409_conflict()
+    {
+        var exception = new DbUpdateException("x", new PostgresException("fk", "ERROR", "ERROR", PostgresErrorCodes.ForeignKeyViolation));
+        var (status, code, _) = AppExceptionHandler.Classify(exception);
+        status.Should().Be(409);
+        code.Should().Be("CONFLICT");
+    }
+
+    [Fact]
     public void Unknown_exception_is_500_internal_error()
     {
         var (status, code, _) = AppExceptionHandler.Classify(new InvalidOperationException("x"));

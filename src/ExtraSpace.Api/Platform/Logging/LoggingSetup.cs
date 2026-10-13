@@ -19,6 +19,7 @@ public static class LoggingSetup
     {
         var environment = builder.Environment;
         var configuration = builder.Configuration;
+        // preserveStaticLogger: each host keeps its own logger; test hosts in one process share Serilog's static one, and disposing one silenced the rest.
         builder.Services.AddSerilog((services, logger) =>
         {
             var app = services.GetRequiredService<IOptions<AppOptions>>().Value;
@@ -44,7 +45,7 @@ public static class LoggingSetup
             {
                 logger.WriteTo.Console(CreateJsonFormatter());
             }
-        });
+        }, preserveStaticLogger: true);
         return builder;
     }
 }

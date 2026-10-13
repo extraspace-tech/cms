@@ -1,3 +1,4 @@
+using ExtraSpace.Api.Features.Admin;
 using ExtraSpace.Api.Features.Identity;
 using ExtraSpace.Api.Integrations.Email;
 using ExtraSpace.Api.Platform.Health;
@@ -8,9 +9,10 @@ using ExtraSpace.Api.Platform.Tracing;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddPlatformLogging();
-builder.Services.AddPlatform(builder.Configuration);
+builder.Services.AddPlatform(builder.Configuration, builder.Environment);
 builder.Services.AddEmail(builder.Configuration, builder.Environment);
 builder.Services.AddIdentityFeature(builder.Configuration);
+builder.Services.AddAdminFeature(builder.Configuration, builder.Environment);
 
 var app = builder.Build();
 
@@ -38,6 +40,9 @@ app.UseAuthorization();                             // 13
                                                     // 14: feature endpoints, each Features/<X>/<X>Endpoints.cs; groups only, never handlers here
 var api = app.MapGroup("/api/v1").RequireCustomer().WithEnumGuard();   // customer API; public routes opt out with .AllowAnonymous()
 api.MapIdentityEndpoints();
+var admin = app.MapGroup("/admin/api").RequireStaff().WithEnumGuard();   // admin API; cookie + CSRF + audit
+admin.MapAdminEndpoints(app.Environment);
+app.MapJobsDashboard();
 foreach (var mapper in app.Services.GetServices<IEndpointMapper>()) mapper.Map(app);
 app.MapHealthEndpoints();
 if (!app.Environment.IsProduction()) app.MapOpenApi();

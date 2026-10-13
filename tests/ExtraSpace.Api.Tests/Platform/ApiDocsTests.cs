@@ -2,7 +2,9 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using ExtraSpace.Api.Tests.TestSupport;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ExtraSpace.Api.Tests.Platform;
 
@@ -88,9 +90,13 @@ public sealed class ApiDocsTests(ApiFactory api)
     {
         // Email:Transport=None is refused outside Testing; Ses only builds a client here (nothing is sent).
         await using var production = api.WithWebHostBuilder(b => b.UseEnvironment("Production").UseSetting("App:Role", "Api")
-            .UseSetting("Email:Transport", "Ses").UseSetting("Email:From", "ExtraSpace <no-reply@example.test>"));
+            .UseSetting("Email:Transport", "Ses").UseSetting("Email:From", "ExtraSpace <no-reply@example.test>").UseTestKeyRing().UseTestEntra());
         var client = production.CreateClient();
         (await client.GetAsync("/openapi/v1.json", Ct)).StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await client.GetAsync("/swagger/index.html", Ct)).StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        var protector = production.Services.GetRequiredService<IDataProtectionProvider>().CreateProtector("test");
+        protector.Unprotect(protector.Protect("test-value")).Should().Be("test-value");
+        production.Services.GetRequiredService<TestKeyRing>().GetAllElements().Should().NotBeEmpty();
     }
 }
