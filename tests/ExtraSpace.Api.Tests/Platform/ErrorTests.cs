@@ -44,6 +44,14 @@ public sealed class ErrorTests(ApiFactory api)
     }
 
     [Fact]
+    public async Task A_number_sent_as_a_string_is_a_binding_error()
+    {
+        using var content = new StringContent("""{"count":"5"}""", Encoding.UTF8, "application/json");
+        var body = await Problem.ReadAsync(await _client.PostAsync("/test/validate", content, Ct), 400, "VALIDATION_FAILED");
+        body.TryGetProperty("errors", out _).Should().BeFalse("the body cannot be read, so no field was validated");
+    }
+
+    [Fact]
     public async Task Validation_error_is_json_for_a_non_json_client()
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, "/test/validate") { Content = JsonContent.Create(new { email = "not-an-email", count = 99 }) };

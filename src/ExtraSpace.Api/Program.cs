@@ -24,7 +24,8 @@ app.UseExceptionHandler();                          // 4
 app.UseStatusCodePages();                           //   empty error responses become ProblemDetails
 app.UseMiddleware<SecurityHeadersMiddleware>();     // 5
                                                     // 6: no HTTPS redirection, TLS ends at the ALB
-if (!app.Environment.IsProduction())                // 7: static files (Swagger UI now, /admin in S0-5)
+app.UseStaticFiles();                               // 7: the built admin UI (wwwroot/admin)
+if (!app.Environment.IsProduction())                //    and Swagger UI outside production
     app.UseSwaggerUI(o =>
     {
         o.SwaggerEndpoint("/openapi/v1.json", "ExtraSpace API v1");
@@ -46,7 +47,7 @@ app.MapJobsDashboard();
 foreach (var mapper in app.Services.GetServices<IEndpointMapper>()) mapper.Map(app);
 app.MapHealthEndpoints();
 if (!app.Environment.IsProduction()) app.MapOpenApi();
-                                                    // 15: SPA fallback /admin/{*path} in S0-5
+app.MapAdminSpa();                                  // 15: every other /admin page address gets index.html
 app.Run();
 
 public partial class Program;

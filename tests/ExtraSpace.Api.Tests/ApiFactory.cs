@@ -2,12 +2,14 @@ using ExtraSpace.Api.Integrations.Email;
 using ExtraSpace.Api.Platform.Data;
 using ExtraSpace.Api.Platform.Hosting;
 using ExtraSpace.Api.Tests.TestSupport;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
 using Npgsql;
 using Testcontainers.PostgreSql;
 
@@ -53,6 +55,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             // The validation generator only sees endpoint types of the compilation that calls AddValidation (TestBody lives here).
             services.AddValidation();
             services.AddSingleton<Serilog.Core.ILogEventSink>(Logs);
+            // A locally built admin UI (wwwroot/admin) must not leak into the tests; AdminSpaTests bring their own files.
+            services.Configure<StaticFileOptions>(o => o.FileProvider = new NullFileProvider());
             services.Configure<RateLimiterOptions>(o => o.AddFixedWindowLimiter("test-tight", w =>
             {
                 w.PermitLimit = 1;

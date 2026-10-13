@@ -94,16 +94,58 @@ public sealed class RoleEndpointsTests(ApiFactory api)
     }
 
     [Fact]
-    public async Task A_duplicate_name_ignoring_case_gets_409()
+    public async Task Creating_with_a_taken_name_ignoring_case_and_spaces_gets_409_role_name_taken()
     {
         var (client, actor) = await ManagerAsync();
         var name = NewName();
         (await client.PostAsJsonAsync("/admin/api/roles", new { name, permissions = Array.Empty<string>() }, Ct)).StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var response = await client.PostAsJsonAsync("/admin/api/roles", new { name = name.ToUpperInvariant(), permissions = Array.Empty<string>() }, Ct);
+        var response = await client.PostAsJsonAsync("/admin/api/roles", new { name = $"  {name.ToUpperInvariant()} ", permissions = Array.Empty<string>() }, Ct);
 
-        await Problem.ReadAsync(response, 409, "CONFLICT");
+        await Problem.ReadAsync(response, 409, "ROLE_NAME_TAKEN");
         (await AuditRowsByAsync(actor.Id)).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Renaming_to_a_taken_name_gets_409_role_name_taken()
+    {
+        var (client, _) = await ManagerAsync();
+        var taken = await api.CreateRoleAsync();
+        var role = await api.CreateRoleAsync();
+
+        var response = await client.PatchAsJsonAsync($"/admin/api/roles/{role.Id}", new { name = $" {taken.Name.ToUpperInvariant()} ", version = role.Version }, Ct);
+
+        await Problem.ReadAsync(response, 409, "ROLE_NAME_TAKEN");
+        (await FindAsync(role.Id))!.Name.Should().Be(role.Name);
+        (await api.AuditRowsForAsync(role.Id)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task A_role_can_be_renamed_to_its_own_name_in_another_case()
+    {
+        var (client, _) = await ManagerAsync();
+        var role = await api.CreateRoleAsync();
+        var renamed = role.Name.ToUpperInvariant();
+        renamed.Should().NotBe(role.Name);
+
+        var response = await client.PatchAsJsonAsync($"/admin/api/roles/{role.Id}", new { name = renamed, version = role.Version }, Ct);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await FindAsync(role.Id))!.Name.Should().Be(renamed);
+    }
+
+    [Fact]
+    public async Task Renaming_with_a_stale_version_gets_409_conflict()
+    {
+        var (client, _) = await ManagerAsync();
+        var role = await api.CreateRoleAsync();
+        var first = NewName();
+        (await client.PatchAsJsonAsync($"/admin/api/roles/{role.Id}", new { name = first, version = role.Version }, Ct))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        await Problem.ReadAsync(await client.PatchAsJsonAsync($"/admin/api/roles/{role.Id}", new { name = NewName(), version = role.Version }, Ct), 409, "CONFLICT");
+
+        (await FindAsync(role.Id))!.Name.Should().Be(first);
     }
 
     [Fact]

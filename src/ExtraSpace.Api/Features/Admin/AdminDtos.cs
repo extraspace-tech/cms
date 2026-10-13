@@ -5,7 +5,7 @@ namespace ExtraSpace.Api.Features.Admin;
 
 internal sealed record StaffSession(Guid Id, string Email, string? DisplayName, Guid RoleId, string RoleName, bool IsOwner, IReadOnlyList<string> Permissions);
 
-internal sealed record AdminMeResponse(Guid Id, string Email, string? DisplayName, Guid RoleId, string RoleName, IReadOnlyList<string> Permissions);
+internal sealed record AdminMeResponse(Guid Id, string Email, string? DisplayName, Guid RoleId, string RoleName, bool IsOwner, IReadOnlyList<string> Permissions);
 
 internal sealed record CsrfResponse(string Token);
 

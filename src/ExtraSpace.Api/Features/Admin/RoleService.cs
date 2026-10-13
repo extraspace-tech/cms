@@ -14,15 +14,20 @@ internal sealed class RoleService(AppDbContext db, PermissionCatalog catalog)
     public async Task<RoleResponse> CreateAsync(CreateRoleBody body, CancellationToken cancellationToken)
     {
         var role = new Role { Name = CheckedName(body.Name!), Permissions = CheckedPermissions(body.Permissions!) };
+        await EnsureNameFreeAsync(role, cancellationToken);
         db.Add(role);
-        await db.SaveChangesAsync(cancellationToken);   // same name ignoring case → unique violation → 409 CONFLICT
+        await db.SaveChangesAsync(cancellationToken);   // a same name saved since the check → unique violation → 409 CONFLICT
         return await GetAsync(role.Id, cancellationToken);
     }
 
     public async Task<RoleResponse> UpdateAsync(Guid id, UpdateRoleBody body, CancellationToken cancellationToken)
     {
         var role = await FindEditableAsync(id, body.Version!.Value, cancellationToken);
-        if (body.Name is not null) role.Name = CheckedName(body.Name);
+        if (body.Name is not null)
+        {
+            role.Name = CheckedName(body.Name);
+            await EnsureNameFreeAsync(role, cancellationToken);
+        }
         if (body.Permissions is not null) role.Permissions = CheckedPermissions(body.Permissions);
         await db.SaveChangesAsync(cancellationToken);
         return await GetAsync(id, cancellationToken);
@@ -42,6 +47,13 @@ internal sealed class RoleService(AppDbContext db, PermissionCatalog catalog)
         if (role.IsSystem) throw AdminErrors.SystemRole();
         db.Entry(role).Property(r => r.Version).OriginalValue = version;   // stale → DbUpdateConcurrencyException → 409
         return role;
+    }
+
+    // The rule of the unique index on lower(name), answered with its own code: CONFLICT alone reads as "someone else changed this".
+    private async Task EnsureNameFreeAsync(Role role, CancellationToken cancellationToken)
+    {
+        var name = role.Name.ToLowerInvariant();
+        if (await db.Set<Role>().AnyAsync(r => r.Id != role.Id && r.Name.ToLower() == name, cancellationToken)) throw AdminErrors.RoleNameTaken();
     }
 
     private static string CheckedName(string name) =>

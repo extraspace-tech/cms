@@ -40,6 +40,7 @@ public sealed class AdminAuthTests(ApiFactory api)
         body.GetProperty("email").GetString().Should().Be(staff.Email);
         body.GetProperty("roleId").GetGuid().Should().Be(staff.RoleId);
         body.GetProperty("roleName").GetString().Should().StartWith("role-");
+        body.GetProperty("isOwner").GetBoolean().Should().BeFalse();
         body.GetProperty("permissions").EnumerateArray().Select(p => p.GetString())
             .Should().Equal(AdminPermissions.AuditRead, AdminPermissions.StaffManage);
     }

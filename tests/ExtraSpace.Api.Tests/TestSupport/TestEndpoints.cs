@@ -39,6 +39,7 @@ internal sealed class TestEndpoints : IEndpointMapper
         test.MapGet("/enum-filter", ([FromQuery] TestStatus? filter) => TypedResults.Ok(new { filter }));
         test.MapGet("/enum", () => TypedResults.Ok(new TestEnumBody { Status = TestStatus.Archived }));
         test.MapPost("/enum", (TestEnumBody body) => TypedResults.Ok(body));
+        test.MapPost("/required", (TestOuterBody body) => TypedResults.Ok());
         test.MapGet("/status/{status:int}", (int status) => Results.StatusCode(status));
         test.MapGet("/log-secrets", LogSecrets);
         test.MapGet("/customer-line", (HttpContext http, ILogger<TestEndpoints> logger) =>
@@ -112,4 +113,26 @@ public enum TestStatus { Active, Archived }
 public sealed class TestEnumBody
 {
     public TestStatus Status { get; set; }
+}
+
+/// <summary>[Required] on a nested body and on a nullable enum: the two uses the document writes as a reference.</summary>
+public sealed class TestOuterBody
+{
+    [Required]
+    public TestInnerBody? Inner { get; set; }
+
+    [Required]
+    public TestStatus? Status { get; set; }
+
+    public TestInnerBody? OptionalInner { get; set; }
+    public TestStatus? OptionalStatus { get; set; }
+}
+
+/// <summary>Reached only as a property of <see cref="TestOuterBody"/>.</summary>
+public sealed class TestInnerBody
+{
+    [Required]
+    public string? Name { get; set; }
+
+    public string? Note { get; set; }
 }
