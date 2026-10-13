@@ -19,7 +19,7 @@ internal static class AdminSetup
         services.AddScoped<StaffService>();
         services.AddScoped<RoleService>();
         services.AddScoped<AuditQuery>();
-        services.AddStaffAuth(configuration, environment);
+        services.AddStaffAuth(environment);
         services.AddScoped<AuditContext>();
         services.AddScoped<ISaveChangesInterceptor, AuditInterceptor>();
         return services;

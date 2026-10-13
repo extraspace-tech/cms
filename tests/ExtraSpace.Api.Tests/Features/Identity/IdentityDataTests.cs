@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using ExtraSpace.Api.Features.Identity;
+using ExtraSpace.Api.Features.Identity.Contracts;
 using ExtraSpace.Api.Tests.TestSupport;
 using Microsoft.EntityFrameworkCore;
 
@@ -25,7 +26,7 @@ public sealed class IdentityDataTests(ApiFactory api)
         await api.WithDbAsync(async db =>
         {
             db.Add(new CustomerRefreshToken { CustomerId = customer.Id, FamilyId = Guid.CreateVersion7(), TokenHash = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(32)), ExpiresAt = expires });
-            db.Add(new CustomerLoginCode { Email = codeEmail, CodeHash = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(32)), ExpiresAt = expires, LastSentAt = expires, WindowStartedAt = expires });
+            db.Add(new LoginCode { Purpose = LoginCodePurpose.Customer, Email = codeEmail, CodeHash = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(32)), ExpiresAt = expires, LastSentAt = expires, WindowStartedAt = expires });
             await db.SaveChangesAsync();
         });
         await api.WithDbAsync(async db =>
@@ -34,7 +35,7 @@ public sealed class IdentityDataTests(ApiFactory api)
             token.ExpiresAt.Should().Be(expires);
             token.ExpiresAt.Kind.Should().Be(DateTimeKind.Utc);
 
-            var code = await db.Set<CustomerLoginCode>().SingleAsync(c => c.Email == codeEmail);
+            var code = await db.Set<LoginCode>().SingleAsync(c => c.Email == codeEmail);
             foreach (var instant in new[] { code.ExpiresAt, code.LastSentAt, code.WindowStartedAt })
             {
                 instant.Should().Be(expires);

@@ -2,14 +2,9 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using ExtraSpace.Api.Features.Admin;
 using ExtraSpace.Api.Platform.Data;
-using Microsoft.AspNetCore.Authentication.OpenIdConnect;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.IdentityModel.Protocols;
-using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 
 namespace ExtraSpace.Api.Tests.TestSupport;
 
@@ -52,6 +47,23 @@ internal static class AdminTestData
     public static HttpClient AdminClient(this WebApplicationFactory<Program> api) =>
         api.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost"), HandleCookies = true });
 
+    private static int _ip;
+
+    /// <summary>An admin client with its own X-Forwarded-For address, so the per-IP sign-in limits of one test never hit another.</summary>
+    public static HttpClient AdminClientWithIp(this WebApplicationFactory<Program> api)
+    {
+        var n = Interlocked.Increment(ref _ip);
+        var client = api.AdminClient();
+        client.DefaultRequestHeaders.Add("X-Forwarded-For", $"11.{(n >> 16) & 255}.{(n >> 8) & 255}.{n & 255}");
+        return client;
+    }
+
+    public static Task<HttpResponseMessage> RequestStaffCodeAsync(this HttpClient client, string email) =>
+        client.PostAsJsonAsync("/admin/api/auth/code", new { email }, TestContext.Current.CancellationToken);
+
+    public static Task<HttpResponseMessage> VerifyStaffCodeAsync(this HttpClient client, string email, string code) =>
+        client.PostAsJsonAsync("/admin/api/auth/code/verify", new { email, code }, TestContext.Current.CancellationToken);
+
     public static async Task<HttpClient> SignedInAdminAsync(this ApiFactory api, StaffUser staff, bool withCsrf = true)
     {
         var client = api.AdminClient();
@@ -75,36 +87,6 @@ internal static class AdminTestData
         var role = await api.CreateRoleAsync(permissions);
         var staff = await api.CreateStaffAsync(role.Id);
         return (await api.SignedInAdminAsync(staff), staff);
-    }
-
-    /// <summary>
-    /// Test-only Entra settings (Production refuses to start without them). The OIDC handler gets a static configuration,
-    /// and its backchannel throws, so a metadata or token call fails the test instead of reaching Microsoft.
-    /// </summary>
-    public static IWebHostBuilder UseTestEntra(this IWebHostBuilder builder) => builder
-        .UseSetting("Admin:Entra:TenantId", "test-tenant")
-        .UseSetting("Admin:Entra:ClientId", "test-client")
-        .UseSetting("Admin:Entra:ClientSecret", "test-client-secret")
-        .ConfigureTestServices(services =>
-        {
-            // Configure runs before the OIDC post-configure, which builds the backchannel from this handler.
-            services.Configure<OpenIdConnectOptions>(StaffAuth.EntraScheme, o => o.BackchannelHttpHandler = new NoNetworkHandler());
-            // The OIDC post-configure has already built a metadata ConfigurationManager by now: replace it, not only Configuration.
-            services.PostConfigure<OpenIdConnectOptions>(StaffAuth.EntraScheme, o =>
-            {
-                o.Configuration = new OpenIdConnectConfiguration
-                {
-                    AuthorizationEndpoint = "https://login.example.test/authorize",
-                    Issuer = "https://login.example.test/test-tenant/v2.0",
-                };
-                o.ConfigurationManager = new StaticConfigurationManager<OpenIdConnectConfiguration>(o.Configuration);
-            });
-        });
-
-    private sealed class NoNetworkHandler : HttpMessageHandler
-    {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
-            throw new InvalidOperationException($"A test host tried to call {request.RequestUri}.");
     }
 }
 

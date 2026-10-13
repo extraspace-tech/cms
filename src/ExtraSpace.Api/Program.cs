@@ -41,7 +41,7 @@ app.UseAuthorization();                             // 13
 var api = app.MapGroup("/api/v1").RequireCustomer().WithEnumGuard();   // customer API; public routes opt out with .AllowAnonymous()
 api.MapIdentityEndpoints();
 var admin = app.MapGroup("/admin/api").RequireStaff().WithEnumGuard();   // admin API; cookie + CSRF + audit
-admin.MapAdminEndpoints(app.Environment);
+admin.MapAdminEndpoints();
 app.MapJobsDashboard();
 foreach (var mapper in app.Services.GetServices<IEndpointMapper>()) mapper.Map(app);
 app.MapHealthEndpoints();

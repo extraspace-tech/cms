@@ -169,11 +169,6 @@ namespace ExtraSpace.Api.Platform.Data.Migrations
                         .HasColumnType("character varying(254)")
                         .HasColumnName("email");
 
-                    b.Property<string>("EntraObjectId")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("entra_object_id");
-
                     b.Property<DateTime?>("LastSignInAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_sign_in_at");
@@ -202,10 +197,6 @@ namespace ExtraSpace.Api.Platform.Data.Migrations
                     b.HasIndex("Email")
                         .IsUnique()
                         .HasDatabaseName("ix_staff_user_email");
-
-                    b.HasIndex("EntraObjectId")
-                        .IsUnique()
-                        .HasDatabaseName("ix_staff_user_entra_object_id");
 
                     b.HasIndex("RoleId")
                         .HasDatabaseName("ix_staff_user_role_id");
@@ -256,74 +247,6 @@ namespace ExtraSpace.Api.Platform.Data.Migrations
                         .HasDatabaseName("ix_customer_email");
 
                     b.ToTable("customer", (string)null);
-                });
-
-            modelBuilder.Entity("ExtraSpace.Api.Features.Identity.CustomerLoginCode", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<int>("Attempts")
-                        .HasColumnType("integer")
-                        .HasColumnName("attempts");
-
-                    b.Property<string>("CodeHash")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("code_hash");
-
-                    b.Property<DateTime?>("ConsumedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("consumed_at");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasMaxLength(254)
-                        .HasColumnType("character varying(254)")
-                        .HasColumnName("email");
-
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("expires_at");
-
-                    b.Property<DateTime>("LastSentAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_sent_at");
-
-                    b.Property<string>("RequestIp")
-                        .HasMaxLength(45)
-                        .HasColumnType("character varying(45)")
-                        .HasColumnName("request_ip");
-
-                    b.Property<int>("SentInWindow")
-                        .HasColumnType("integer")
-                        .HasColumnName("sent_in_window");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<DateTime>("WindowStartedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("window_started_at");
-
-                    b.HasKey("Id")
-                        .HasName("pk_customer_login_code");
-
-                    b.HasIndex("Email")
-                        .IsUnique()
-                        .HasDatabaseName("ix_customer_login_code_email");
-
-                    b.HasIndex("ExpiresAt")
-                        .HasDatabaseName("ix_customer_login_code_expires_at");
-
-                    b.ToTable("customer_login_code", (string)null);
                 });
 
             modelBuilder.Entity("ExtraSpace.Api.Features.Identity.CustomerRefreshToken", b =>
@@ -393,6 +316,80 @@ namespace ExtraSpace.Api.Platform.Data.Migrations
                         .HasDatabaseName("ix_customer_refresh_token_token_hash");
 
                     b.ToTable("customer_refresh_token", (string)null);
+                });
+
+            modelBuilder.Entity("ExtraSpace.Api.Features.Identity.LoginCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempts");
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("code_hash");
+
+                    b.Property<DateTime?>("ConsumedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("consumed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)")
+                        .HasColumnName("email");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<DateTime>("LastSentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_sent_at");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("purpose");
+
+                    b.Property<string>("RequestIp")
+                        .HasMaxLength(45)
+                        .HasColumnType("character varying(45)")
+                        .HasColumnName("request_ip");
+
+                    b.Property<int>("SentInWindow")
+                        .HasColumnType("integer")
+                        .HasColumnName("sent_in_window");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<DateTime>("WindowStartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("window_started_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_login_code");
+
+                    b.HasIndex("ExpiresAt")
+                        .HasDatabaseName("ix_login_code_expires_at");
+
+                    b.HasIndex("Purpose", "Email")
+                        .IsUnique()
+                        .HasDatabaseName("ix_login_code_purpose_email");
+
+                    b.ToTable("login_code", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>

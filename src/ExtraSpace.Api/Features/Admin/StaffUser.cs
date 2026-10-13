@@ -8,7 +8,6 @@ internal sealed class StaffUser : IHasTimestamps, IHasStaffStamps, IAudited
     public Guid Id { get; init; } = Guid.CreateVersion7();
     public required string Email { get; set; }
     public string? DisplayName { get; set; }
-    public string? EntraObjectId { get; set; }
     public Guid RoleId { get; set; }
     public Role Role { get; set; } = null!;
     public bool Active { get; set; } = true;

@@ -6,7 +6,7 @@ using ExtraSpace.Api.Tests.TestSupport;
 
 namespace ExtraSpace.Api.Tests.Features.Admin;
 
-/// <summary>S0 spec §11 items 4–5, with the test sign-in route in place of Entra.</summary>
+/// <summary>S0 spec §11 items 4–5, with the test sign-in route in place of an emailed code.</summary>
 [Collection("Owners")]
 public sealed class AdminFlowTests(ApiFactory api)
 {

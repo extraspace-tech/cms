@@ -39,13 +39,13 @@ internal static class IdentityEndpoints
 
     private static async Task<Accepted> RequestCode(RequestCodeBody body, HttpContext http, LoginCodeService codes, CancellationToken cancellationToken)
     {
-        await codes.RequestAsync(body.Email!, Ip(http), cancellationToken);
+        await codes.SendAsync(LoginCodePurpose.Customer, body.Email!, Ip(http), cancellationToken);
         return TypedResults.Accepted((string?)null);
     }
 
     private static async Task<Ok<TokenResponse>> VerifyCode(VerifyCodeBody body, HttpContext http, LoginCodeService codes, CancellationToken cancellationToken)
     {
-        var signIn = await codes.VerifyAsync(body.Email!, body.Code!, Ip(http), UserAgent(http), cancellationToken);
+        var signIn = await codes.VerifyCustomerAsync(body.Email!, body.Code!, Ip(http), UserAgent(http), cancellationToken);
         RequestLog.Add(http, "customerId", signIn.CustomerId);
         return TypedResults.Ok(signIn.Tokens);
     }

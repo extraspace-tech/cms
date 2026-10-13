@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using ExtraSpace.Api.Features.Admin;
 using ExtraSpace.Api.Tests.TestSupport;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExtraSpace.Api.Tests.Features.Admin;
@@ -207,5 +208,92 @@ public sealed class StaffEndpointsTests(ApiFactory api)
         item.GetProperty("active").GetBoolean().Should().BeTrue();
         item.GetProperty("lastSignInAt").GetString().Should().Be("2026-10-01T02:03:04Z");
         item.GetProperty("version").GetUInt32().Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task Adding_staff_records_the_display_name()
+    {
+        var (client, _) = await api.StaffClientAsync(AdminPermissions.StaffManage);
+        var role = await api.CreateRoleAsync();
+
+        var named = await client.PostAsJsonAsync("/admin/api/staff",
+            new { email = IdentityTestData.NewEmail("added"), roleId = role.Id, displayName = "  Jane Staff  " }, Ct);
+        var blank = await client.PostAsJsonAsync("/admin/api/staff",
+            new { email = IdentityTestData.NewEmail("added"), roleId = role.Id, displayName = "   " }, Ct);
+
+        named.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await named.Content.ReadFromJsonAsync<JsonElement>(Ct);
+        body.GetProperty("displayName").GetString().Should().Be("Jane Staff");
+        var row = (await api.AuditRowsForAsync(body.GetProperty("id").GetGuid())).Should().ContainSingle().Subject;
+        row.Changes.RootElement.GetProperty("displayName").GetProperty("to").GetString().Should().Be("Jane Staff");
+        blank.StatusCode.Should().Be(HttpStatusCode.Created);
+        (await blank.Content.ReadFromJsonAsync<JsonElement>(Ct)).GetProperty("displayName").ValueKind.Should().Be(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task Changing_the_display_name_records_only_that_field()
+    {
+        var (client, actor) = await api.StaffClientAsync(AdminPermissions.StaffManage);
+        var other = await api.CreateRoleAsync();
+        var target = await api.CreateStaffAsync((await api.CreateRoleAsync()).Id);
+
+        var renamed = await PatchAsync(client, target.Id, new { displayName = " Jane Staff ", version = target.Version });
+
+        renamed.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await renamed.Content.ReadFromJsonAsync<JsonElement>(Ct);
+        body.GetProperty("displayName").GetString().Should().Be("Jane Staff");
+        var row = (await api.AuditRowsForAsync(target.Id)).Should().ContainSingle().Subject;
+        row.StaffUserId.Should().Be(actor.Id);
+        var changes = row.Changes.RootElement;
+        changes.EnumerateObject().Select(p => p.Name).Should().Equal("displayName");
+        changes.GetProperty("displayName").GetProperty("from").ValueKind.Should().Be(JsonValueKind.Null);
+        changes.GetProperty("displayName").GetProperty("to").GetString().Should().Be("Jane Staff");
+
+        // A PATCH without the field leaves the name; an empty one clears it.
+        var moved = await PatchAsync(client, target.Id, new { roleId = other.Id, version = body.GetProperty("version").GetUInt32() });
+        var movedBody = await moved.Content.ReadFromJsonAsync<JsonElement>(Ct);
+        movedBody.GetProperty("displayName").GetString().Should().Be("Jane Staff");
+        var cleared = await PatchAsync(client, target.Id, new { displayName = "", version = movedBody.GetProperty("version").GetUInt32() });
+        cleared.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await LoadAsync(target.Id)).DisplayName.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task A_display_name_over_200_characters_gets_400()
+    {
+        var (client, _) = await api.StaffClientAsync(AdminPermissions.StaffManage);
+        var role = await api.CreateRoleAsync();
+        var target = await api.CreateStaffAsync(role.Id);
+        var tooLong = new string('n', 201);
+
+        var add = await Problem.ReadAsync(await client.PostAsJsonAsync("/admin/api/staff",
+            new { email = IdentityTestData.NewEmail("added"), roleId = role.Id, displayName = tooLong }, Ct), 400, "VALIDATION_FAILED");
+        var patch = await Problem.ReadAsync(await PatchAsync(client, target.Id, new { displayName = tooLong, version = target.Version }), 400, "VALIDATION_FAILED");
+
+        add.GetProperty("errors").TryGetProperty("displayName", out _).Should().BeTrue();
+        patch.GetProperty("errors").TryGetProperty("displayName", out _).Should().BeTrue();
+        (await LoadAsync(target.Id)).DisplayName.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task An_email_outside_the_allowed_domains_gets_400()
+    {
+        await using var host = api.WithWebHostBuilder(b => b.UseSetting("App:Role", "Api").UseSetting("Admin:AllowedEmailDomains:0", "example.test"));
+        var role = await api.CreateRoleAsync(AdminPermissions.StaffManage);
+        var actor = await api.CreateStaffAsync(role.Id);
+        var client = host.AdminClient();
+        (await client.PostAsync($"/test/admin/sign-in/{actor.Id}", null, Ct)).EnsureSuccessStatusCode();
+        await client.AddCsrfAsync();
+        var outside = $"added-{Guid.NewGuid():N}@other.test";
+
+        var refused = await client.PostAsJsonAsync("/admin/api/staff", new { email = outside, roleId = role.Id }, Ct);
+        var allowed = await client.PostAsJsonAsync("/admin/api/staff", new { email = IdentityTestData.NewEmail("added").ToUpperInvariant(), roleId = role.Id }, Ct);
+
+        (await Problem.ReadAsync(refused, 400, "VALIDATION_FAILED")).GetProperty("title").GetString().Should().Be("This email domain is not allowed.");
+        var added = true;
+        await api.WithDbAsync(async db => added = await db.Set<StaffUser>().AnyAsync(s => s.Email == outside));
+        added.Should().BeFalse();
+        (await AuditRowsByAsync(actor.Id)).Should().Be(1);
+        allowed.StatusCode.Should().Be(HttpStatusCode.Created);
     }
 }

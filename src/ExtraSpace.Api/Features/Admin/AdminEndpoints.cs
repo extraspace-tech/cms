@@ -1,4 +1,4 @@
-using System.Net;
+using ExtraSpace.Api.Platform.Logging;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -16,14 +16,15 @@ internal static class AdminEndpoints
         return group;
     }
 
-    public static RouteGroupBuilder MapAdminEndpoints(this RouteGroupBuilder admin, IHostEnvironment environment)
+    public static RouteGroupBuilder MapAdminEndpoints(this RouteGroupBuilder admin)
     {
         var auth = admin.MapGroup("/auth").WithTags("Admin auth");
-        auth.MapGet("/login", Login).AllowAnonymous();
+        // Anonymous: the emailed code is the credential. AdminRequestFilter skips anonymous routes (no CSRF check, no audit).
+        auth.MapPost("/code", RequestCode).AllowAnonymous().RequireRateLimiting(StaffAuth.CodeRateLimit);
+        auth.MapPost("/code/verify", VerifyCode).AllowAnonymous().RequireRateLimiting(StaffAuth.VerifyRateLimit);
         auth.MapGet("/csrf", Csrf);
         // Cast: a handler taking only HttpContext binds the RequestDelegate overload, which discards the result (200, not 204; ASP0016).
         auth.MapPost("/logout", (Delegate)Logout);
-        if (environment.IsDevelopment()) auth.MapPost("/dev-login", DevLogin).AllowAnonymous();
 
         admin.MapGet("/me", GetMe).WithTags("Admin");
 
@@ -44,10 +45,19 @@ internal static class AdminEndpoints
         return admin;
     }
 
-    private static async Task<ChallengeHttpResult> Login(IAuthenticationSchemeProvider schemes)
+    // Always 202: the answer never tells whether the address belongs to a staff member.
+    private static async Task<Accepted> RequestCode(StaffCodeBody body, HttpContext http, StaffSignIn signIn, CancellationToken cancellationToken)
     {
-        if (await schemes.GetSchemeAsync(StaffAuth.EntraScheme) is null) throw AdminErrors.SignInUnavailable();
-        return TypedResults.Challenge(new AuthenticationProperties { RedirectUri = "/admin" }, [StaffAuth.EntraScheme]);
+        await signIn.RequestCodeAsync(body.Email!, http.Connection.RemoteIpAddress?.ToString(), cancellationToken);
+        return TypedResults.Accepted((string?)null);
+    }
+
+    private static async Task<NoContent> VerifyCode(StaffVerifyBody body, HttpContext http, StaffSignIn signIn, CancellationToken cancellationToken)
+    {
+        var staffId = await signIn.VerifyCodeAsync(body.Email!, body.Code!, cancellationToken);
+        RequestLog.Add(http, "staffId", staffId);
+        await http.SignInAsync(StaffAuth.CookieScheme, StaffAuth.PrincipalFor(staffId));   // the cookie keeps only the id
+        return TypedResults.NoContent();
     }
 
     private static Ok<CsrfResponse> Csrf(HttpContext http, IAntiforgery antiforgery) =>
@@ -56,17 +66,6 @@ internal static class AdminEndpoints
     private static async Task<NoContent> Logout(HttpContext http)
     {
         await http.SignOutAsync(StaffAuth.CookieScheme);
-        return TypedResults.NoContent();
-    }
-
-    private static async Task<NoContent> DevLogin(DevLoginBody body, HttpContext http, StaffSignIn signIn, CancellationToken cancellationToken)
-    {
-        // Development only (mapped above) and loopback only, in case a shared host ever runs as Development.
-        // A forwarded header means the address may come from the client (UseForwardedHeaders trusts any proxy; it moves the original to X-Original-For).
-        if (http.Request.Headers.ContainsKey("X-Forwarded-For") || http.Request.Headers.ContainsKey("X-Original-For")
-            || http.Connection.RemoteIpAddress is not { } ip || !IPAddress.IsLoopback(ip)) throw AdminErrors.NotFound("Route");
-        var staffId = await signIn.ResolveAsync(null, body.Email!, null, cancellationToken) ?? throw AdminErrors.NoAccess();
-        await http.SignInAsync(StaffAuth.CookieScheme, StaffAuth.PrincipalFor(staffId));
         return TypedResults.NoContent();
     }
 

@@ -1,13 +1,15 @@
+using ExtraSpace.Api.Features.Identity.Contracts;
 using ExtraSpace.Api.Platform.Data;
 
 namespace ExtraSpace.Api.Features.Identity;
 
 /// <summary>
-/// One row per email (plan decision 2): the active code plus the per-email send limits. A new request overwrites the code.
+/// One row per purpose and email: the active code plus the per-email send limits. A new request overwrites the code.
 /// </summary>
-internal sealed class CustomerLoginCode : IHasTimestamps
+internal sealed class LoginCode : IHasTimestamps
 {
     public Guid Id { get; init; } = Guid.CreateVersion7();
+    public required LoginCodePurpose Purpose { get; init; }
     public required string Email { get; init; }
     public string CodeHash { get; set; } = "";
     public DateTime ExpiresAt { get; set; }

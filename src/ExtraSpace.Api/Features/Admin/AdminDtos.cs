@@ -20,10 +20,19 @@ internal sealed record AuditItem(Guid Id, DateTime OccurredAt, Guid StaffId, str
 internal sealed record AuditPage(IReadOnlyList<AuditItem> Items, int Total, int Page, int PageSize);
 
 // Request bodies are public: the .NET 10 validation generator skips non-public types.
-public sealed class DevLoginBody
+public sealed class StaffCodeBody
 {
     [Required, EmailAddress, MaxLength(254)]
     public string? Email { get; init; }
+}
+
+public sealed class StaffVerifyBody
+{
+    [Required, EmailAddress, MaxLength(254)]
+    public string? Email { get; init; }
+
+    [Required, RegularExpression("^[0-9]{6}$")]
+    public string? Code { get; init; }
 }
 
 public sealed class AddStaffBody
@@ -33,12 +42,19 @@ public sealed class AddStaffBody
 
     [Required]
     public Guid? RoleId { get; init; }
+
+    [MaxLength(200)]
+    public string? DisplayName { get; init; }
 }
 
 public sealed class UpdateStaffBody
 {
     public Guid? RoleId { get; init; }
     public bool? Active { get; init; }
+
+    /// <summary>Null = unchanged; empty = clear.</summary>
+    [MaxLength(200)]
+    public string? DisplayName { get; init; }
 
     [Required]
     public uint? Version { get; init; }

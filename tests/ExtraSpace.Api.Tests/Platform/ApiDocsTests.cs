@@ -90,7 +90,7 @@ public sealed class ApiDocsTests(ApiFactory api)
     {
         // Email:Transport=None is refused outside Testing; Ses only builds a client here (nothing is sent).
         await using var production = api.WithWebHostBuilder(b => b.UseEnvironment("Production").UseSetting("App:Role", "Api")
-            .UseSetting("Email:Transport", "Ses").UseSetting("Email:From", "ExtraSpace <no-reply@example.test>").UseTestKeyRing().UseTestEntra());
+            .UseSetting("Email:Transport", "Ses").UseSetting("Email:From", "ExtraSpace <no-reply@example.test>").UseTestKeyRing());
         var client = production.CreateClient();
         (await client.GetAsync("/openapi/v1.json", Ct)).StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await client.GetAsync("/swagger/index.html", Ct)).StatusCode.Should().Be(HttpStatusCode.NotFound);

@@ -7,14 +7,15 @@ internal sealed class AdminOptions
     /// <summary>First staff emails (S0 spec §6.2); used only while no active Owner exists. Remove once one Owner exists.</summary>
     public string[] BootstrapEmails { get; set; } = [];
 
-    public EntraOptions Entra { get; set; } = new();
-}
+    /// <summary>Company email domains (<c>example.com</c>). Empty = any. Another domain cannot be added as staff and never gets a code.</summary>
+    public string[] AllowedEmailDomains { get; set; } = [];
 
-internal sealed class EntraOptions
-{
-    public string TenantId { get; set; } = "";
-    public string ClientId { get; set; } = "";
-    public string ClientSecret { get; set; } = "";
+    public bool AllowsDomain(string email)
+    {
+        if (AllowedEmailDomains.Length == 0) return true;
+        var domain = email[(email.LastIndexOf('@') + 1)..].Trim();
+        return AllowedEmailDomains.Any(d => d.Trim().TrimStart('@').Equals(domain, StringComparison.OrdinalIgnoreCase));
+    }
 
-    public bool IsConfigured => TenantId.Length > 0 && ClientId.Length > 0 && ClientSecret.Length > 0;
+    public bool IsBootstrap(string email) => BootstrapEmails.Any(b => b.Trim().Equals(email, StringComparison.OrdinalIgnoreCase));
 }

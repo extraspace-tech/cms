@@ -1,3 +1,4 @@
+using ExtraSpace.Api.Features.Identity.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -17,14 +18,15 @@ internal sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
     }
 }
 
-internal sealed class CustomerLoginCodeConfiguration : IEntityTypeConfiguration<CustomerLoginCode>
+internal sealed class LoginCodeConfiguration : IEntityTypeConfiguration<LoginCode>
 {
-    public void Configure(EntityTypeBuilder<CustomerLoginCode> builder)
+    public void Configure(EntityTypeBuilder<LoginCode> builder)
     {
-        builder.ToTable("customer_login_code");
+        builder.ToTable("login_code");
         builder.Property(c => c.Id).ValueGeneratedNever();
+        builder.Property(c => c.Purpose).HasConversion<string>().HasMaxLength(20);
         builder.Property(c => c.Email).HasMaxLength(254);
-        builder.HasIndex(c => c.Email).IsUnique();
+        builder.HasIndex(c => new { c.Purpose, c.Email }).IsUnique();
         builder.Property(c => c.CodeHash).HasMaxLength(64);
         builder.Property(c => c.RequestIp).HasMaxLength(45);
         builder.HasIndex(c => c.ExpiresAt);

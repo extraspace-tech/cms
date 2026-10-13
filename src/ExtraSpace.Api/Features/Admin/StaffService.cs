@@ -1,9 +1,10 @@
 using ExtraSpace.Api.Platform.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace ExtraSpace.Api.Features.Admin;
 
-internal sealed class StaffService(AppDbContext db)
+internal sealed class StaffService(AppDbContext db, IOptions<AdminOptions> options)
 {
     public Task<List<StaffResponse>> ListAsync(CancellationToken cancellationToken) =>
         Responses(db.Set<StaffUser>().OrderBy(s => s.Email)).ToListAsync(cancellationToken);
@@ -11,7 +12,9 @@ internal sealed class StaffService(AppDbContext db)
     public async Task<StaffResponse> AddAsync(StaffSession actor, AddStaffBody body, CancellationToken cancellationToken)
     {
         var roleId = body.RoleId!.Value;
+        var email = body.Email!.Trim().ToLowerInvariant();
         if (roleId == Role.OwnerId && !actor.IsOwner) throw AdminErrors.OwnerOnly();
+        if (!options.Value.AllowsDomain(email)) throw AdminErrors.Invalid("This email domain is not allowed.");
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         if (roleId == Role.OwnerId)
         {
@@ -19,7 +22,7 @@ internal sealed class StaffService(AppDbContext db)
             if (!await ActorIsActiveOwnerAsync(actor.Id, cancellationToken)) throw AdminErrors.OwnerOnly();
         }
         if (!await db.Set<Role>().AnyAsync(r => r.Id == roleId, cancellationToken)) throw AdminErrors.Invalid("The role does not exist.");
-        var staff = new StaffUser { Email = body.Email!.Trim().ToLowerInvariant(), RoleId = roleId };
+        var staff = new StaffUser { Email = email, RoleId = roleId, DisplayName = Name(body.DisplayName) };
         db.Add(staff);
         await db.SaveChangesAsync(cancellationToken);   // a second row with the same email → unique violation → 409 CONFLICT
         await transaction.CommitAsync(cancellationToken);
@@ -40,6 +43,7 @@ internal sealed class StaffService(AppDbContext db)
         var wasOwner = staff.Active && staff.RoleId == Role.OwnerId;
         staff.RoleId = body.RoleId ?? staff.RoleId;
         staff.Active = body.Active ?? staff.Active;
+        if (body.DisplayName is not null) staff.DisplayName = Name(body.DisplayName);
         var isOwner = staff.Active && staff.RoleId == Role.OwnerId;
 
         if (wasOwner != isOwner || (body.RoleId == Role.OwnerId && db.Entry(staff).Property(s => s.RoleId).IsModified))
@@ -54,6 +58,8 @@ internal sealed class StaffService(AppDbContext db)
         await transaction.CommitAsync(cancellationToken);
         return await GetAsync(id, cancellationToken);
     }
+
+    private static string? Name(string? displayName) => string.IsNullOrWhiteSpace(displayName) ? null : displayName.Trim();
 
     // Under the staff-owners lock: the session was loaded before another Owner may have demoted this actor.
     private Task<bool> ActorIsActiveOwnerAsync(Guid actorId, CancellationToken cancellationToken) =>

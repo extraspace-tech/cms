@@ -1,4 +1,5 @@
 using ExtraSpace.Api.Features.Admin;
+using ExtraSpace.Api.Features.Identity.Contracts;
 using ExtraSpace.Api.Platform.Data;
 using ExtraSpace.Api.Platform.Logging;
 using ExtraSpace.Api.Tests.TestSupport;
@@ -14,33 +15,45 @@ public sealed class StaffSignInTests(ApiFactory api)
 {
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    private async Task<Guid?> ResolveAsync(string? objectId, string? email, string? name = null, params string[] bootstrapEmails)
+    private async Task<T> WithSignInAsync<T>(AdminOptions options, Func<StaffSignIn, AppDbContext, Task<T>> action)
     {
         await using var scope = api.Services.CreateAsyncScope();
         var services = scope.ServiceProvider;
-        var signIn = new StaffSignIn(services.GetRequiredService<AppDbContext>(),
-            Options.Create(new AdminOptions { BootstrapEmails = bootstrapEmails }), TimeProvider.System,
+        var db = services.GetRequiredService<AppDbContext>();
+        var signIn = new StaffSignIn(db, services.GetRequiredService<ILoginCodes>(), Options.Create(options), TimeProvider.System,
             services.GetRequiredService<ILogger<StaffSignIn>>());
-        return await signIn.ResolveAsync(objectId, email, name, Ct);
+        return await action(signIn, db);
     }
 
-    private async Task<StaffUser> LoadAsync(Guid id)
+    private Task<Guid?> ResolveAsync(string email, AdminOptions? options = null) =>
+        WithSignInAsync(options ?? new AdminOptions(), (signIn, _) => signIn.ResolveAsync(email, Ct));
+
+    private Task<bool> MaySignInAsync(string email, AdminOptions? options = null) =>
+        WithSignInAsync(options ?? new AdminOptions(), (signIn, _) => signIn.MaySignInAsync(email, Ct));
+
+    private async Task<StaffUser?> FindAsync(string email)
     {
         StaffUser? staff = null;
-        await api.WithDbAsync(async db => staff = await db.Set<StaffUser>().SingleAsync(s => s.Id == id));
-        return staff!;
+        await api.WithDbAsync(async db => staff = await db.Set<StaffUser>().SingleOrDefaultAsync(s => s.Email == email));
+        return staff;
     }
 
     private async Task<StaffUser> NewStaffAsync(bool active = true) =>
         await api.CreateStaffAsync((await api.CreateRoleAsync()).Id, active);
 
-    private static string NewObjectId() => $"test-oid-{Guid.NewGuid():N}";
+    private IEnumerable<string?> SignedInLinesFor(Guid staffId) => api.Logs.All()
+        .Where(l => l.TryGetProperty("staffId", out var id) && id.GetString() == staffId.ToString())
+        .Select(l => l.GetProperty("messageTemplate").GetString());
 
     [Fact]
     public async Task An_unknown_email_is_refused()
     {
         await api.ClearOwnersAsync();
-        (await ResolveAsync(NewObjectId(), IdentityTestData.NewEmail("s"))).Should().BeNull();
+        var email = IdentityTestData.NewEmail("s");
+
+        (await MaySignInAsync(email)).Should().BeFalse();
+        (await ResolveAsync(email)).Should().BeNull();
+        (await FindAsync(email)).Should().BeNull();
     }
 
     [Fact]
@@ -48,49 +61,23 @@ public sealed class StaffSignInTests(ApiFactory api)
     {
         await api.ClearOwnersAsync();
         var staff = await NewStaffAsync(active: false);
-        (await ResolveAsync(NewObjectId(), staff.Email)).Should().BeNull();
+
+        (await MaySignInAsync(staff.Email)).Should().BeFalse();
+        (await ResolveAsync(staff.Email)).Should().BeNull();
+        (await FindAsync(staff.Email))!.LastSignInAt.Should().BeNull();
     }
 
     [Fact]
-    public async Task The_first_sign_in_by_email_links_the_object_id()
+    public async Task A_staff_member_is_found_by_email_and_the_last_sign_in_is_recorded()
     {
         await api.ClearOwnersAsync();
         var staff = await NewStaffAsync();
-        var objectId = NewObjectId();
 
-        (await ResolveAsync(objectId, staff.Email.ToUpperInvariant())).Should().Be(staff.Id);
-        (await LoadAsync(staff.Id)).EntraObjectId.Should().Be(objectId);
-        (await ResolveAsync(objectId, IdentityTestData.NewEmail("renamed"))).Should().Be(staff.Id);
-    }
+        (await MaySignInAsync($" {staff.Email.ToUpperInvariant()} ")).Should().BeTrue();
+        (await ResolveAsync($" {staff.Email.ToUpperInvariant()} ")).Should().Be(staff.Id);
 
-    [Fact]
-    public async Task An_email_linked_to_another_object_id_is_refused()
-    {
-        await api.ClearOwnersAsync();
-        var staff = await NewStaffAsync();
-        (await ResolveAsync(NewObjectId(), staff.Email)).Should().Be(staff.Id);
-        (await ResolveAsync(NewObjectId(), staff.Email)).Should().BeNull();
-    }
-
-    [Fact]
-    public async Task The_display_name_and_last_sign_in_are_recorded()
-    {
-        await api.ClearOwnersAsync();
-        var unnamed = await NewStaffAsync();
-        var named = await NewStaffAsync();
-        await api.WithDbAsync(async db =>
-        {
-            (await db.Set<StaffUser>().SingleAsync(s => s.Id == named.Id)).DisplayName = "Kept Name";
-            await db.SaveChangesAsync();
-        });
-
-        await ResolveAsync(null, unnamed.Email, "Jane Staff");
-        await ResolveAsync(null, named.Email, "Other Name");
-
-        var first = await LoadAsync(unnamed.Id);
-        first.DisplayName.Should().Be("Jane Staff");
-        first.LastSignInAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromMinutes(1));
-        (await LoadAsync(named.Id)).DisplayName.Should().Be("Kept Name");
+        (await FindAsync(staff.Email))!.LastSignInAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromMinutes(1));
+        SignedInLinesFor(staff.Id).Should().Equal("Staff {staffId} signed in");
     }
 
     [Fact]
@@ -98,15 +85,17 @@ public sealed class StaffSignInTests(ApiFactory api)
     {
         await api.ClearOwnersAsync();
         var email = IdentityTestData.NewEmail("boot");
+        var options = new AdminOptions { BootstrapEmails = [$" {email.ToUpperInvariant()} "] };
 
-        var id = await ResolveAsync(NewObjectId(), email.ToUpperInvariant(), "First Owner", email);
+        (await MaySignInAsync(email, options)).Should().BeTrue();
+        (await FindAsync(email)).Should().BeNull("asking writes nothing");
+        var id = await ResolveAsync(email.ToUpperInvariant(), options);
 
-        id.Should().NotBeNull();
-        var staff = await LoadAsync(id!.Value);
+        var staff = await FindAsync(email);
+        staff!.Id.Should().Be(id!.Value);
         staff.RoleId.Should().Be(Role.OwnerId);
         staff.Active.Should().BeTrue();
-        staff.Email.Should().Be(email);
-        staff.DisplayName.Should().Be("First Owner");
+        SignedInLinesFor(staff.Id).Should().Equal("Bootstrap Owner {staffId} created", "Staff {staffId} signed in");
     }
 
     [Fact]
@@ -115,11 +104,66 @@ public sealed class StaffSignInTests(ApiFactory api)
         await api.ClearOwnersAsync();
         await api.CreateStaffAsync(Role.OwnerId);
         var email = IdentityTestData.NewEmail("boot");
+        var options = new AdminOptions { BootstrapEmails = [email] };
 
-        (await ResolveAsync(NewObjectId(), email, null, email)).Should().BeNull();
-        var exists = true;
-        await api.WithDbAsync(async db => exists = await db.Set<StaffUser>().AnyAsync(s => s.Email == email));
-        exists.Should().BeFalse();
+        (await MaySignInAsync(email, options)).Should().BeFalse();
+        (await ResolveAsync(email, options)).Should().BeNull();
+        (await FindAsync(email)).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task A_deactivated_bootstrap_address_does_not_come_back()
+    {
+        await api.ClearOwnersAsync();
+        var staff = await api.CreateStaffAsync(Role.OwnerId, active: false);
+        var options = new AdminOptions { BootstrapEmails = [staff.Email] };
+
+        (await MaySignInAsync(staff.Email, options)).Should().BeFalse();
+        (await ResolveAsync(staff.Email, options)).Should().BeNull();
+        (await FindAsync(staff.Email))!.Active.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task A_disallowed_domain_is_refused()
+    {
+        await api.ClearOwnersAsync();
+        var staff = await NewStaffAsync();
+        var bootstrap = IdentityTestData.NewEmail("boot");
+        var options = new AdminOptions { AllowedEmailDomains = ["company.test"], BootstrapEmails = [bootstrap] };
+
+        (await MaySignInAsync(staff.Email, options)).Should().BeFalse();
+        (await ResolveAsync(staff.Email, options)).Should().BeNull();
+        (await MaySignInAsync(bootstrap, options)).Should().BeFalse();
+        (await ResolveAsync(bootstrap, options)).Should().BeNull();
+        (await FindAsync(bootstrap)).Should().BeNull();
+
+        var allowed = new AdminOptions { AllowedEmailDomains = ["company.test", " @Example.Test "] };
+        (await MaySignInAsync(staff.Email, allowed)).Should().BeTrue();
+        (await ResolveAsync(staff.Email, allowed)).Should().Be(staff.Id);
+    }
+
+    [Fact]
+    public async Task Inside_a_callers_transaction_it_joins_and_never_commits()
+    {
+        await api.ClearOwnersAsync();
+        var staff = await NewStaffAsync();
+        var bootstrap = IdentityTestData.NewEmail("boot");
+
+        var bootstrapId = await WithSignInAsync(new AdminOptions { BootstrapEmails = [bootstrap] }, async (signIn, db) =>
+        {
+            await using var transaction = await db.Database.BeginTransactionAsync(Ct);
+            (await signIn.ResolveAsync(staff.Email, Ct)).Should().Be(staff.Id);
+            var created = await signIn.ResolveAsync(bootstrap, Ct);
+            db.Database.CurrentTransaction.Should().BeSameAs(transaction);
+            await transaction.RollbackAsync(Ct);
+            return created;
+        });
+
+        bootstrapId.Should().NotBeNull();
+        (await FindAsync(staff.Email))!.LastSignInAt.Should().BeNull();
+        (await FindAsync(bootstrap)).Should().BeNull();
+        SignedInLinesFor(staff.Id).Should().BeEmpty("nothing was committed");
+        SignedInLinesFor(bootstrapId!.Value).Should().BeEmpty("nothing was committed");
     }
 
     [Fact]
@@ -128,7 +172,7 @@ public sealed class StaffSignInTests(ApiFactory api)
         await api.ClearOwnersAsync();
         var email = IdentityTestData.NewEmail("refused");
 
-        (await ResolveAsync(null, email)).Should().BeNull();
+        (await ResolveAsync(email)).Should().BeNull();
 
         var refusals = api.Logs.All()
             .Where(l => l.TryGetProperty("messageTemplate", out var t) && t.GetString() == "Staff sign-in refused for {email}: {reason}");

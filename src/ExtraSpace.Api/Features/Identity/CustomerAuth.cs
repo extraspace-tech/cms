@@ -1,4 +1,5 @@
 using System.Threading.RateLimiting;
+using ExtraSpace.Api.Features.Identity.Contracts;
 using ExtraSpace.Api.Platform.Jobs;
 using Hangfire;
 using Microsoft.AspNetCore.Authorization;
@@ -47,6 +48,7 @@ internal static class CustomerAuth
         services.AddSingleton<LoginCodeHasher>();
         services.AddScoped<TokenService>();
         services.AddScoped<LoginCodeService>();
+        services.AddScoped<ILoginCodes>(sp => sp.GetRequiredService<LoginCodeService>());
         services.AddRecurringJob<IdentityHousekeepingJob>("IdentityHousekeeping", Cron.Daily(3));
         // Per IP, in memory, so per API task (plan decision 3); the per-email limits live in the database.
         services.Configure<RateLimiterOptions>(o =>

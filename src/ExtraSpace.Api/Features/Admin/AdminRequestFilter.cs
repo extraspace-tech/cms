@@ -10,7 +10,7 @@ internal sealed class AdminRequestFilter : IEndpointFilter
     {
         var http = context.HttpContext;
         var endpoint = http.GetEndpoint();
-        // Anonymous routes (login, dev-login) sign in: a leftover cookie must not make their save an audited admin write.
+        // Anonymous routes (code, code/verify) sign in: a leftover cookie must not make their save an audited admin write.
         if (endpoint?.Metadata.GetMetadata<IAllowAnonymous>() is not null) return await next(context);
         // Fail closed: the group policy should have stopped this request already.
         if (http.User.StaffId() is not { } staffId) throw AdminErrors.Unauthenticated();

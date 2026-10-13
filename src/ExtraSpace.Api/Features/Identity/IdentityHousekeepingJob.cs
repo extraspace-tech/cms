@@ -16,7 +16,7 @@ internal sealed partial class IdentityHousekeepingJob(AppDbContext db, TimeProvi
         var codeCutoff = now - CodeRetention;
         var tokenCutoff = now - TokenRetention;
         // No per-email advisory lock: PostgreSQL re-checks expires_at on a row a code request just renewed, so a fresh code is never deleted.
-        var codes = await db.Set<CustomerLoginCode>().Where(c => c.ExpiresAt < codeCutoff).ExecuteDeleteAsync(cancellationToken);
+        var codes = await db.Set<LoginCode>().Where(c => c.ExpiresAt < codeCutoff).ExecuteDeleteAsync(cancellationToken);
         var tokens = await db.Set<CustomerRefreshToken>().Where(t => t.ExpiresAt < tokenCutoff).ExecuteDeleteAsync(cancellationToken);
         LogDone(logger, codes, tokens);
     }

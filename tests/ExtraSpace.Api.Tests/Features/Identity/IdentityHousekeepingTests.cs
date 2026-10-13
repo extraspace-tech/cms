@@ -1,4 +1,5 @@
 using ExtraSpace.Api.Features.Identity;
+using ExtraSpace.Api.Features.Identity.Contracts;
 using ExtraSpace.Api.Tests.TestSupport;
 using Hangfire;
 using Hangfire.Storage;
@@ -21,8 +22,8 @@ public sealed class IdentityHousekeepingTests(ApiFactory api)
         await api.WithDbAsync(async db =>
         {
             db.AddRange(
-                new CustomerLoginCode { Email = oldCode, CodeHash = "x", ExpiresAt = now.AddDays(-2), LastSentAt = now.AddDays(-2), WindowStartedAt = now.AddDays(-2) },
-                new CustomerLoginCode { Email = freshCode, CodeHash = "x", ExpiresAt = now.AddHours(-1), LastSentAt = now.AddHours(-1), WindowStartedAt = now.AddHours(-1) },
+                new LoginCode { Purpose = LoginCodePurpose.Customer, Email = oldCode, CodeHash = "x", ExpiresAt = now.AddDays(-2), LastSentAt = now.AddDays(-2), WindowStartedAt = now.AddDays(-2) },
+                new LoginCode { Purpose = LoginCodePurpose.Customer, Email = freshCode, CodeHash = "x", ExpiresAt = now.AddHours(-1), LastSentAt = now.AddHours(-1), WindowStartedAt = now.AddHours(-1) },
                 new CustomerRefreshToken { CustomerId = customer.Id, FamilyId = Guid.CreateVersion7(), TokenHash = "old-" + Guid.NewGuid().ToString("N"), ExpiresAt = now.AddDays(-31) },
                 new CustomerRefreshToken { CustomerId = customer.Id, FamilyId = Guid.CreateVersion7(), TokenHash = "recent-" + Guid.NewGuid().ToString("N"), ExpiresAt = now.AddDays(-29) });
             await db.SaveChangesAsync(Ct);
@@ -36,8 +37,8 @@ public sealed class IdentityHousekeepingTests(ApiFactory api)
 
         await api.WithDbAsync(async db =>
         {
-            (await db.Set<CustomerLoginCode>().AnyAsync(c => c.Email == oldCode, Ct)).Should().BeFalse();
-            (await db.Set<CustomerLoginCode>().AnyAsync(c => c.Email == freshCode, Ct)).Should().BeTrue();
+            (await db.Set<LoginCode>().AnyAsync(c => c.Email == oldCode, Ct)).Should().BeFalse();
+            (await db.Set<LoginCode>().AnyAsync(c => c.Email == freshCode, Ct)).Should().BeTrue();
             var tokens = await db.Set<CustomerRefreshToken>().Where(t => t.CustomerId == customer.Id).Select(t => t.TokenHash).ToListAsync(Ct);
             tokens.Should().ContainSingle().Which.Should().StartWith("recent-");
         });

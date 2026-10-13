@@ -4,8 +4,14 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using ExtraSpace.Api.Features.Admin;
 using ExtraSpace.Api.Tests.TestSupport;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting.Internal;
+using Microsoft.Extensions.Options;
 
 namespace ExtraSpace.Api.Tests.Features.Admin;
 
@@ -215,8 +221,43 @@ public sealed class AdminAuthTests(ApiFactory api)
     }
 
     [Fact]
-    public async Task Login_without_entra_settings_answers_503() =>
-        await Problem.ReadAsync(await api.AdminClient().GetAsync("/admin/api/auth/login", Ct), 503, "ADMIN_SIGNIN_UNAVAILABLE");
+    public async Task The_redirect_login_route_is_gone() =>
+        await Problem.ReadAsync(await api.AdminClient().GetAsync("/admin/api/auth/login", Ct), 404, "NOT_FOUND");
+
+    [Fact]
+    public async Task Development_cookies_work_over_plain_http()
+    {
+        await using var development = api.WithWebHostBuilder(b => b.UseEnvironment("Development").UseSetting("App:Role", "Api")
+            .UseSetting("Seq:Url", "").UseSetting("Email:Transport", "Log")
+            // Development loads the developer's user secrets: pin the test database above every other source.
+            .ConfigureAppConfiguration(c => c.AddInMemoryCollection(
+                new Dictionary<string, string?> { ["ConnectionStrings:Default"] = api.ConnectionString })));
+        development.Services.GetRequiredService<IConfiguration>().GetConnectionString("Default").Should().Be(api.ConnectionString);
+        var staff = await api.CreateStaffAsync((await api.CreateRoleAsync()).Id);
+        var client = development.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("http://localhost"), HandleCookies = true });
+
+        var signIn = await client.PostAsync($"/test/admin/sign-in/{staff.Id}", null, Ct);
+        signIn.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var csrf = await client.GetAsync("/admin/api/auth/csrf", Ct);
+        csrf.StatusCode.Should().Be(HttpStatusCode.OK);
+        var cookies = signIn.Headers.GetValues("Set-Cookie").Concat(csrf.Headers.GetValues("Set-Cookie")).ToList();
+        cookies.Should().Contain(c => c.StartsWith(StaffAuth.DevCookieName + "=", StringComparison.Ordinal))
+            .And.Contain(c => c.StartsWith(StaffAuth.DevCsrfCookieName + "=", StringComparison.Ordinal))
+            .And.NotContain(c => c.StartsWith("__Host-", StringComparison.Ordinal));
+
+        var token = (await csrf.Content.ReadFromJsonAsync<JsonElement>(Ct)).GetProperty("token").GetString();
+        client.DefaultRequestHeaders.Add(StaffAuth.CsrfHeader, token);
+        (await client.PostAsync("/admin/api/auth/logout", null, Ct)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public void Production_needs_no_sign_in_settings()
+    {
+        var services = new ServiceCollection().AddLogging().AddStaffAuth(new HostingEnvironment { EnvironmentName = "Production" });
+
+        using var provider = services.BuildServiceProvider();
+        provider.GetRequiredService<IOptions<AuthenticationOptions>>().Value.Schemes.Select(s => s.Name).Should().Equal(StaffAuth.CookieScheme);
+    }
 
     [Fact]
     public async Task The_customer_bearer_lock_stays_off_admin_routes()
