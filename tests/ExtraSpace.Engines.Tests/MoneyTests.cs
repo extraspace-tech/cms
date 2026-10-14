@@ -16,8 +16,48 @@ public sealed class MoneyTests
     [InlineData("-1.015", "-1.02")]
     [InlineData("10.999", "11.00")]
     [InlineData("0", "0.00")]
-    public void Round_is_half_away_from_zero_to_two_places(string input, string expected) =>
-        Money.Round(D(input)).Should().Be(D(expected));
+    public void Round_is_half_away_from_zero_to_two_places_for_SGD(string input, string expected) =>
+        Money.Round(D(input), "SGD").Should().Be(D(expected));
+
+    [Theory]
+    [InlineData("1234.5", "1235")]
+    [InlineData("-0.5", "-1")]
+    [InlineData("1.4", "1")]
+    public void KRW_rounds_to_whole_won(string input, string expected) =>
+        Money.Round(D(input), "KRW").Should().Be(D(expected));
+
+    [Fact]
+    public void An_unsupported_currency_cannot_be_rounded()
+    {
+        var round = () => Money.Round(1m, "USD");
+        round.Should().Throw<ArgumentException>().WithMessage("*USD*");
+    }
+
+    [Fact]
+    public void Default_money_has_no_currency()
+    {
+        var money = default(Money);
+        var read = () => money.Currency;
+        read.Should().Throw<InvalidOperationException>().WithMessage("*Money.Zero*");
+        var add = () => money + new Money(1m, "SGD");
+        add.Should().Throw<InvalidOperationException>();
+        money.ToString().Should().Be("0.00 (none)");
+    }
+
+    [Fact]
+    public void ToString_ignores_the_current_culture()
+    {
+        var previous = CultureInfo.CurrentCulture;
+        CultureInfo.CurrentCulture = new CultureInfo("de-DE");
+        try
+        {
+            new Money(1234.5m, "SGD").ToString().Should().Be("1234.50 SGD");
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = previous;
+        }
+    }
 
     [Fact]
     public void Instance_round_keeps_the_currency() =>

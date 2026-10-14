@@ -47,6 +47,26 @@ public sealed class JobsTests(ApiFactory api)
     }
 
     [Fact]
+    public async Task A_second_host_in_the_process_leaves_job_tracing_working_after_it_is_disposed()
+    {
+        // The second host drops its own job lines, so a filter still logging through it shows up as a missing line.
+        await using (var host = api.WithWebHostBuilder(b =>
+        {
+            b.UseSetting("App:Role", "Api");
+            b.UseSetting("Serilog:MinimumLevel:Override:ExtraSpace.Api.Platform.Jobs", "Fatal");
+        }))
+        {
+            _ = host.Services.GetRequiredService<IGlobalConfiguration>();   // runs its Hangfire set-up
+        }
+
+        GlobalJobFilters.Filters.Where(f => f.Instance is JobTracingFilter).Should().ContainSingle();
+        GlobalJobFilters.Filters.Where(f => f.Instance is AutomaticRetryAttribute).Should().ContainSingle();
+        var (traceId, jobId, _) = await EnqueueAsync("ok");
+        var done = await api.Logs.WaitForAsync(l => Str(l, "jobId") == jobId && Str(l, "messageTemplate") == "Job {jobName} succeeded in {elapsedMs} ms");
+        Str(done.Single(), "correlationId").Should().Be(traceId);
+    }
+
+    [Fact]
     public async Task A_failed_job_logs_its_exception_once_and_fails_permanently()
     {
         var (traceId, jobId, marker) = await EnqueueAsync("fail");

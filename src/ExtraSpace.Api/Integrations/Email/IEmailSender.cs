@@ -8,6 +8,9 @@ internal sealed record EmailMessage(string Template, string To, IReadOnlyDiction
 
 internal interface IEmailSender
 {
-    /// <summary>Queues the email as a Hangfire job and returns its id. Call it after the database commit (S0 spec §7).</summary>
-    string Enqueue(EmailMessage message);
+    /// <summary>
+    /// Adds the email to the caller's unit of work (outbox). Call it before the caller's SaveChanges/commit: the email goes out
+    /// only if that commits (S1 spec §9.10).
+    /// </summary>
+    void Enqueue(EmailMessage message);
 }

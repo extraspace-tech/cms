@@ -54,18 +54,18 @@ internal sealed partial class LoginCodeService(
             row.RequestIp = TokenService.ClipIp(ip);
             row.LastSentAt = now;
             row.SentInWindow++;
+            sender.Enqueue(new EmailMessage("login-code", address,
+                new Dictionary<string, string>
+                {
+                    ["code"] = code,
+                    ["minutes"] = ((int)CodeLifetime.TotalMinutes).ToString(CultureInfo.InvariantCulture),
+                },
+                CodeLifetime));
             await db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             codeId = row.Id;
         }
 
-        sender.Enqueue(new EmailMessage("login-code", address,
-            new Dictionary<string, string>
-            {
-                ["code"] = code,
-                ["minutes"] = ((int)CodeLifetime.TotalMinutes).ToString(CultureInfo.InvariantCulture),
-            },
-            CodeLifetime));
         // The purpose rides on the line as a property; the message stays the one S0-3 dashboards and tests know.
         using (PurposeScope(purpose)) LogRequested(logger, codeId, Pii.MaskEmail(address));
     }

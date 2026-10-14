@@ -28,7 +28,7 @@ describe('shell', () => {
   it('shows every menu item to an Owner', async () => {
     renderApp('/admin/')
     const nav = within(await screen.findByRole('navigation'))
-    for (const name of ['Dashboard', 'Staff', 'Roles', 'Audit log', 'Jobs'])
+    for (const name of ['Dashboard', 'Admin Users', 'Roles', 'Audit Log', 'Jobs'])
       expect(nav.getByRole('link', { name })).toBeInTheDocument()
     expect(nav.getByRole('link', { name: 'Jobs' })).toHaveAttribute('href', '/admin/jobs')
     expect(screen.getByText('Olive Owner')).toBeInTheDocument()
@@ -39,10 +39,29 @@ describe('shell', () => {
     server.use(http.get('*/admin/api/staff', () => HttpResponse.json([])), http.get('*/admin/api/roles', () => HttpResponse.json([])))
     renderApp('/admin/', { me: staffMe })
     const nav = within(await screen.findByRole('navigation'))
-    expect(nav.getByRole('link', { name: 'Staff' })).toBeInTheDocument()
-    for (const name of ['Roles', 'Audit log', 'Jobs'])
+    expect(nav.getByRole('link', { name: 'Admin Users' })).toBeInTheDocument()
+    for (const name of ['Roles', 'Audit Log', 'Jobs'])
       expect(nav.queryByRole('link', { name })).not.toBeInTheDocument()
     expect(screen.getByText('desk@example.test')).toBeInTheDocument()   // no display name: the email stands in
+  })
+
+  it('groups the sidebar like the demo and hides what the staff member may not use', async () => {
+    renderApp('/admin/')
+    const nav = within(await screen.findByRole('navigation'))
+    expect(nav.getByText('Platform')).toBeInTheDocument()
+    expect(nav.getByText('Access Control')).toBeInTheDocument()
+    const platform = ['Sites', 'Storage Types', 'Unit Sizes', 'Units']
+    const access = ['Admin Users', 'Audit Log', 'Jobs', 'Roles']
+    const labels = nav.getAllByRole('link').map((link) => link.textContent)
+    expect(labels).toEqual(['Dashboard', ...platform, ...access])
+  })
+
+  it('shows only the allowed Access Control items to a non-Owner', async () => {
+    renderApp('/admin/', { me: staffMe })   // staff.manage only
+    const nav = within(await screen.findByRole('navigation'))
+    expect(nav.getByText('Admin Users')).toBeInTheDocument()
+    expect(nav.queryByText('Roles')).not.toBeInTheDocument()
+    expect(nav.getByText('Sites')).toBeInTheDocument()   // Platform pages are readable by any staff member
   })
 
   it('refuses a page address the staff member has no permission for', async () => {
@@ -67,7 +86,7 @@ describe('shell', () => {
       }),
     )
     const { user } = renderApp('/admin/staff')
-    expect(await screen.findByRole('heading', { name: 'Staff' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Admin Users' })).toBeInTheDocument()
 
     signedIn = false
     await user.click(screen.getByRole('button', { name: 'Reload' }))
@@ -76,7 +95,7 @@ describe('shell', () => {
     await user.click(screen.getByRole('button', { name: 'Send code' }))
     await user.type(await screen.findByLabelText('Code'), '123456')
     await user.click(screen.getByRole('button', { name: 'Sign in' }))
-    expect(await screen.findByRole('heading', { name: 'Staff' })).toBeInTheDocument()   // not the dashboard
+    expect(await screen.findByRole('heading', { name: 'Admin Users' })).toBeInTheDocument()   // not the dashboard
   })
 
   it('signs out', async () => {

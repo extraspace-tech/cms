@@ -54,11 +54,11 @@ internal sealed class TestEndpoints : IEndpointMapper
             var jobId = kind == "fail" ? jobs.Enqueue<TestJobs>(j => j.Fail(marker)) : jobs.Enqueue<TestJobs>(j => j.Ok(marker));
             return TypedResults.Ok(new { jobId, marker });
         });
-        test.MapPost("/email", (string to, string code, int? validForMs, IEmailSender email) =>
+        test.MapPost("/email", (string to, string code, int? validForMs, EmailSealer sealer, EmailJobQueue queue) =>
         {
-            var jobId = email.Enqueue(new EmailMessage("login-code", to,
+            var jobId = queue.Enqueue(sealer.Seal(new EmailMessage("login-code", to,
                 new Dictionary<string, string> { ["code"] = code, ["minutes"] = "10" },
-                TimeSpan.FromMilliseconds(validForMs ?? 600_000)));
+                TimeSpan.FromMilliseconds(validForMs ?? 600_000))));
             return TypedResults.Ok(new { jobId });
         });
         test.MapPost("/admin/sign-in/{staffId:guid}", async (Guid staffId, HttpContext http) =>

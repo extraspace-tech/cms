@@ -182,8 +182,8 @@ public sealed class AdminDataTests(ApiFactory api)
     }
 
     [Fact]
-    public void The_catalogue_lists_the_s0_permissions() =>
-        api.Services.GetRequiredService<PermissionCatalog>().Names.Should().Equal("audit.read", "jobs.manage", "roles.manage", "staff.manage");
+    public void The_catalogue_lists_every_registered_permission() =>
+        api.Services.GetRequiredService<PermissionCatalog>().Names.Should().Equal("audit.read", "jobs.manage", "roles.manage", "sites.manage", "staff.manage");
 
     [Fact]
     public void A_permission_registered_twice_fails()

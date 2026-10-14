@@ -35,7 +35,7 @@ public sealed class EmailAllowListTests
         var transport = new FakeEmailTransport();
         var job = new EmailJob(protection, transport, TimeProvider.System,
             Options.Create(new EmailOptions { AllowedRecipients = ["qa@example.test"] }), NullLogger<EmailJob>.Instance);
-        var payload = protection.CreateProtector(HangfireEmailSender.Purpose).ToTimeLimitedDataProtector().Protect(
+        var payload = protection.CreateProtector(EmailSealer.Purpose).ToTimeLimitedDataProtector().Protect(
             JsonSerializer.Serialize(new EmailPayload(to, new Dictionary<string, string> { ["code"] = "123456", ["minutes"] = "10" })),
             TimeSpan.FromMinutes(5));
 

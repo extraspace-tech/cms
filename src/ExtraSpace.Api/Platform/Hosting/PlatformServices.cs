@@ -6,6 +6,7 @@ using ExtraSpace.Api.Platform.Errors;
 using ExtraSpace.Api.Platform.Http;
 using ExtraSpace.Api.Platform.Jobs;
 using ExtraSpace.Api.Platform.Logging;
+using ExtraSpace.Api.Platform.Outbox;
 using ExtraSpace.Api.Platform.Tracing;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -60,6 +61,7 @@ public static class PlatformServices
 
         // Jobs (S0 spec §7)
         services.AddPlatformJobs(configuration);
+        services.AddOutbox();
 
         // Errors and endpoints (S0 spec §4.1)
         ActivitySetup.EnsureRequestActivities();

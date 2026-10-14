@@ -4,7 +4,7 @@ import { toastError } from '@/components/ErrorNote'
 import { Button } from '@/components/ui/button'
 import { useSession, useSignOut } from '@/features/auth/session'
 import { cn } from '@/lib/utils'
-import { navItems } from './nav'
+import { navGroups } from './nav'
 import { ThemeSwitch } from './ThemeSwitch'
 
 const itemClass = 'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -12,7 +12,9 @@ const itemClass = 'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-m
 export function Shell() {
   const { me, can } = useSession()
   const signOut = useSignOut()
-  const items = navItems.filter((item) => !item.permission || can(item.permission))
+  const groups = navGroups
+    .map((group) => ({ ...group, items: group.items.filter((item) => !item.permission || can(item.permission)) }))
+    .filter((group) => group.items.length > 0)
 
   return (
     <div className="flex h-screen bg-muted/40">
@@ -21,18 +23,23 @@ export function Shell() {
           <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">e</div>
           <div className="leading-tight">
             <p className="text-sm font-bold">ExtraSpace</p>
-            <p className="text-[11px] text-muted-foreground">Admin</p>
+            <p className="text-[11px] text-muted-foreground">Self Storage</p>
           </div>
         </div>
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-          {items.map(({ label, to, icon: Icon, external }) =>
-            external ? (
-              <a key={to} href={to} className={itemClass}><Icon className="size-4" />{label}</a>
-            ) : (
-              <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => cn(itemClass, isActive && 'bg-primary/10 text-primary')}>
-                <Icon className="size-4" />{label}
-              </NavLink>
-            ))}
+        <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
+          {groups.map((group, index) => (
+            <div key={group.label ?? index} className="space-y-1">
+              {group.label ? <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{group.label}</p> : null}
+              {group.items.map(({ label, to, icon: Icon, external }) =>
+                external ? (
+                  <a key={to} href={to} className={itemClass}><Icon className="size-4" />{label}</a>
+                ) : (
+                  <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => cn(itemClass, isActive && 'bg-primary/10 text-primary')}>
+                    <Icon className="size-4" />{label}
+                  </NavLink>
+                ))}
+            </div>
+          ))}
         </nav>
       </aside>
 

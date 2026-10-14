@@ -1,4 +1,5 @@
 using Amazon.SimpleEmailV2;
+using ExtraSpace.Api.Platform.Outbox;
 
 namespace ExtraSpace.Api.Integrations.Email;
 
@@ -9,7 +10,10 @@ internal static class EmailSetup
         services.AddOptions<EmailOptions>().Bind(configuration.GetSection(EmailOptions.Section))
             .Validate(o => o.Transport != EmailTransport.Ses || o.From.Length > 0, "Email:From must be set when Email:Transport is Ses")
             .ValidateOnStart();
-        services.AddSingleton<IEmailSender, HangfireEmailSender>();
+        services.AddSingleton<EmailSealer>();
+        services.AddSingleton<EmailJobQueue>();
+        services.AddScoped<IEmailSender, OutboxEmailSender>();
+        services.AddOutboxHandler<EmailOutboxHandler>();
         services.AddScoped<EmailJob>();
 
         var transport = configuration.GetSection(EmailOptions.Section).Get<EmailOptions>()?.Transport ?? EmailTransport.Ses;

@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Diagnostics;
 using ExtraSpace.Api.Platform.Tracing;
 using Hangfire.Client;
@@ -5,6 +6,7 @@ using Hangfire.Common;
 using Hangfire.Server;
 using Hangfire.States;
 using Hangfire.Storage;
+using Microsoft.Extensions.Logging.Abstractions;
 using Serilog.Context;
 
 namespace ExtraSpace.Api.Platform.Jobs;
@@ -13,10 +15,26 @@ namespace ExtraSpace.Api.Platform.Jobs;
 /// Job tracing (S0 spec §7, §4.4): stores the enqueuing request's correlationId on the job, gives each run its own trace,
 /// and logs start, success and each failed attempt once (Hangfire's own retry logging is off).
 /// </summary>
-internal sealed partial class JobTracingFilter(ILogger<JobTracingFilter> logger) : IClientFilter, IServerFilter, IApplyStateFilter
+/// <remarks>
+/// Hangfire's filters are process-wide, so there is one shared instance. It logs through the oldest live host's logger: each
+/// host attaches its own (<see cref="JobTracingLogger"/>) and detaches it when disposed, so a disposed test host is never used.
+/// </remarks>
+internal sealed partial class JobTracingFilter : IClientFilter, IServerFilter, IApplyStateFilter
 {
     internal const string CorrelationParameter = "correlationId";
     private const string ScopeItem = "es.jobScope";
+
+    public static JobTracingFilter Shared { get; } = new();
+
+    private ImmutableList<ILogger> _loggers = [];
+
+    private JobTracingFilter() { }
+
+    private ILogger Logger => Volatile.Read(ref _loggers) is { Count: > 0 } loggers ? loggers[0] : NullLogger.Instance;
+
+    internal void Attach(ILogger hostLogger) => ImmutableInterlocked.Update(ref _loggers, l => l.Add(hostLogger));
+
+    internal void Detach(ILogger hostLogger) => ImmutableInterlocked.Update(ref _loggers, l => l.Remove(hostLogger));
 
     public void OnCreating(CreatingContext context) =>
         context.SetJobParameter(CorrelationParameter, Correlation.CurrentId ?? Activity.Current?.TraceId.ToHexString());
@@ -35,7 +53,7 @@ internal sealed partial class JobTracingFilter(ILogger<JobTracingFilter> logger)
             LogContext.PushProperty("jobName", jobName),
             LogContext.PushProperty("attempt", context.GetJobParameter<int>("RetryCount") + 1),
             Stopwatch.GetTimestamp());
-        LogStarted(logger, jobName);
+        LogStarted(Logger, jobName);
     }
 
     public void OnPerformed(PerformedContext context)
@@ -43,9 +61,9 @@ internal sealed partial class JobTracingFilter(ILogger<JobTracingFilter> logger)
         if (context.Items.TryGetValue(ScopeItem, out var item) is false || item is not RunScope scope) return;
         var jobName = JobName(context.BackgroundJob.Job);
         var elapsedMs = (long)Stopwatch.GetElapsedTime(scope.Started).TotalMilliseconds;
-        if (context.Exception is null) LogSucceeded(logger, jobName, elapsedMs);
+        if (context.Exception is null) LogSucceeded(Logger, jobName, elapsedMs);
         // Hangfire wraps what the job threw; log the job's own exception.
-        else LogFailed(logger, context.Exception is JobPerformanceException { InnerException: { } inner } ? inner : context.Exception, jobName, elapsedMs);
+        else LogFailed(Logger, context.Exception is JobPerformanceException { InnerException: { } inner } ? inner : context.Exception, jobName, elapsedMs);
         scope.Dispose();
     }
 
@@ -62,7 +80,7 @@ internal sealed partial class JobTracingFilter(ILogger<JobTracingFilter> logger)
         using (LogContext.PushProperty("attempt", (retryCount is null ? 0 : SerializationHelper.Deserialize<int>(retryCount)) + 1))
         using (LogContext.PushProperty("correlationId", correlationId))
         {
-            LogFailedPermanently(logger, jobName);
+            LogFailedPermanently(Logger, jobName);
         }
     }
 
@@ -100,4 +118,18 @@ internal sealed partial class JobTracingFilter(ILogger<JobTracingFilter> logger)
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Job {jobName} failed permanently")]
     private static partial void LogFailedPermanently(ILogger logger, string jobName);
+}
+
+/// <summary>Attaches this host's logger to <see cref="JobTracingFilter.Shared"/> for as long as the host lives.</summary>
+internal sealed class JobTracingLogger : IDisposable
+{
+    private readonly ILogger<JobTracingFilter> _logger;
+
+    public JobTracingLogger(ILogger<JobTracingFilter> logger)
+    {
+        _logger = logger;
+        JobTracingFilter.Shared.Attach(logger);
+    }
+
+    public void Dispose() => JobTracingFilter.Shared.Detach(_logger);
 }

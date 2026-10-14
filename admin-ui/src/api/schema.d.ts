@@ -836,6 +836,764 @@ export interface paths {
         };
         trace?: never;
     };
+    "/admin/api/sites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    search?: string;
+                    page?: number;
+                    pageSize?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PagedOfSiteListItem"];
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateSiteBody"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SiteResponse"];
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/api/sites/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SiteResponse"];
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete: {
+            parameters: {
+                query: {
+                    version: number;
+                };
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateSiteBody"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SiteResponse"];
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/admin/api/storage-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    search?: string;
+                    page?: number;
+                    pageSize?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PagedOfStorageTypeResponse"];
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateStorageTypeBody"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["StorageTypeResponse"];
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/api/storage-types/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["StorageTypeResponse"];
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete: {
+            parameters: {
+                query: {
+                    version: number;
+                };
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateStorageTypeBody"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["StorageTypeResponse"];
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/admin/api/unit-sizes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    search?: string;
+                    page?: number;
+                    pageSize?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PagedOfUnitSizeResponse"];
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateUnitSizeBody"];
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UnitSizeResponse"];
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/api/unit-sizes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UnitSizeResponse"];
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete: {
+            parameters: {
+                query: {
+                    version: number;
+                };
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateUnitSizeBody"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UnitSizeResponse"];
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/admin/api/units": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    search?: string;
+                    siteId?: string;
+                    available?: boolean;
+                    page?: number;
+                    pageSize?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PagedOfUnitListItem"];
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/api/units/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UnitResponse"];
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/api/unit-sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UnitSyncStatus"][];
+                    };
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/api/sites/{id}/unit-sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UnitSyncBody"];
+                };
+            };
+            responses: {
+                /** @description Accepted */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Error */
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Problem"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -885,9 +1643,63 @@ export interface components {
             name: string;
             permissions: string[];
         };
+        CreateSiteBody: {
+            locationCode: string;
+            /** Format: int32 */
+            siteLinkSiteId?: null | number;
+            name: string;
+            displayName?: null | string;
+            description?: null | string;
+            heroImageUrl?: null | string;
+            address1?: null | string;
+            city?: null | string;
+            region?: null | string;
+            postalCode?: null | string;
+            country: string;
+            phone?: null | string;
+            /** Format: double */
+            latitude?: null | number;
+            /** Format: double */
+            longitude?: null | number;
+            timeZone?: null | string;
+            /** Format: double */
+            taxPercentage: number;
+            taxLabel?: null | string;
+            facilityType?: null | components["schemas"]["FacilityType"];
+            active?: null | boolean;
+            stripeAccountId?: null | string;
+        };
+        CreateStorageTypeBody: {
+            key: string;
+            name: string;
+            displayName?: null | string;
+            iconPath?: null | string;
+            imagePath?: null | string;
+            /** Format: int32 */
+            sortOrder?: null | number;
+            active?: null | boolean;
+        };
+        CreateUnitSizeBody: {
+            key: string;
+            label: string;
+            displayName?: null | string;
+            description?: null | string;
+            unitGroup?: null | string;
+            imagePath?: null | string;
+            /** Format: double */
+            minAreaSqft?: null | number;
+            /** Format: double */
+            maxAreaSqft?: null | number;
+            /** Format: int32 */
+            sortOrder?: null | number;
+            /** Format: uuid */
+            storageTypeId?: null | string;
+        };
         CsrfResponse: {
             token: string;
         };
+        /** @enum {string} */
+        FacilityType: "SelfStorage" | "Workspace";
         JsonElement: unknown;
         MeResponse: {
             /** Format: uuid */
@@ -896,6 +1708,42 @@ export interface components {
             firstName: null | string;
             lastName: null | string;
             phone: null | string;
+        };
+        PagedOfSiteListItem: {
+            items: components["schemas"]["SiteListItem"][];
+            /** Format: int32 */
+            total: number;
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            pageSize: number;
+        };
+        PagedOfStorageTypeResponse: {
+            items: components["schemas"]["StorageTypeResponse"][];
+            /** Format: int32 */
+            total: number;
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            pageSize: number;
+        };
+        PagedOfUnitListItem: {
+            items: components["schemas"]["UnitListItem"][];
+            /** Format: int32 */
+            total: number;
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            pageSize: number;
+        };
+        PagedOfUnitSizeResponse: {
+            items: components["schemas"]["UnitSizeResponse"][];
+            /** Format: int32 */
+            total: number;
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            pageSize: number;
         };
         PermissionResponse: {
             name: string;
@@ -931,6 +1779,49 @@ export interface components {
             /** Format: uint32 */
             version: number;
         };
+        SiteListItem: {
+            /** Format: uuid */
+            id: string;
+            locationCode: string;
+            name: string;
+            facilityType: components["schemas"]["FacilityType"];
+            city: null | string;
+            country: string;
+            active: boolean;
+            /** Format: uint32 */
+            version: number;
+        };
+        SiteResponse: {
+            /** Format: uuid */
+            id: string;
+            locationCode: string;
+            /** Format: int32 */
+            siteLinkSiteId: null | number;
+            name: string;
+            displayName: null | string;
+            description: null | string;
+            heroImageUrl: null | string;
+            address1: null | string;
+            city: null | string;
+            region: null | string;
+            postalCode: null | string;
+            country: string;
+            phone: null | string;
+            /** Format: double */
+            latitude: null | number;
+            /** Format: double */
+            longitude: null | number;
+            timeZone: string;
+            currency: string;
+            /** Format: double */
+            taxPercentage: number;
+            taxLabel: string;
+            facilityType: components["schemas"]["FacilityType"];
+            active: boolean;
+            stripeAccountId: null | string;
+            /** Format: uint32 */
+            version: number;
+        };
         StaffCodeBody: {
             email: string;
         };
@@ -952,6 +1843,20 @@ export interface components {
             email: string;
             code: string;
         };
+        StorageTypeResponse: {
+            /** Format: uuid */
+            id: string;
+            key: string;
+            name: string;
+            displayName: null | string;
+            iconPath: null | string;
+            imagePath: null | string;
+            /** Format: int32 */
+            sortOrder: number;
+            active: boolean;
+            /** Format: uint32 */
+            version: number;
+        };
         TokenResponse: {
             accessToken: string;
             /** Format: date-time */
@@ -960,9 +1865,121 @@ export interface components {
             /** Format: date-time */
             refreshTokenExpiresAt: string;
         };
+        UnitListItem: {
+            /** Format: uuid */
+            id: string;
+            unitName: string;
+            /** Format: uuid */
+            siteId: string;
+            siteName: string;
+            currency: string;
+            storageTypeName: null | string;
+            unitSizeLabel: null | string;
+            /** Format: double */
+            standardRate: null | number;
+            available: boolean;
+            rented: boolean;
+        };
+        UnitResponse: {
+            /** Format: uuid */
+            id: string;
+            unitName: string;
+            /** Format: uuid */
+            siteId: string;
+            siteName: string;
+            currency: string;
+            storageTypeName: null | string;
+            unitSizeLabel: null | string;
+            /** Format: double */
+            width: number;
+            /** Format: double */
+            length: number;
+            /** Format: double */
+            areaSqft: number;
+            /** Format: int32 */
+            floor: null | number;
+            climate: boolean;
+            /** Format: double */
+            standardRate: null | number;
+            /** Format: double */
+            webRate: null | number;
+            rented: boolean;
+            available: boolean;
+            /** Format: date-time */
+            deletedAt: null | string;
+            /** Format: date-time */
+            lastSyncedAt: null | string;
+        };
+        UnitSizeResponse: {
+            /** Format: uuid */
+            id: string;
+            key: string;
+            label: string;
+            displayName: null | string;
+            description: null | string;
+            unitGroup: null | string;
+            imagePath: null | string;
+            /** Format: double */
+            minAreaSqft: null | number;
+            /** Format: double */
+            maxAreaSqft: null | number;
+            /** Format: int32 */
+            sortOrder: number;
+            /** Format: uuid */
+            storageTypeId: null | string;
+            storageTypeName: null | string;
+            /** Format: uint32 */
+            version: number;
+        };
+        UnitSyncBody: {
+            full?: boolean;
+        };
+        UnitSyncStatus: {
+            /** Format: uuid */
+            siteId: string;
+            locationCode: string;
+            siteName: string;
+            active: boolean;
+            /** Format: int32 */
+            units: number;
+            /** Format: date-time */
+            lastSyncedAt: null | string;
+            /** Format: date-time */
+            lastAttemptAt: null | string;
+            lastError: null | string;
+        };
         UpdateRoleBody: {
             name?: null | string;
             permissions?: null | string[];
+            /** Format: uint32 */
+            version: number;
+        };
+        UpdateSiteBody: {
+            locationCode?: null | string;
+            /** Format: int32 */
+            siteLinkSiteId?: null | number;
+            name?: null | string;
+            displayName?: null | string;
+            description?: null | string;
+            heroImageUrl?: null | string;
+            address1?: null | string;
+            city?: null | string;
+            region?: null | string;
+            postalCode?: null | string;
+            country?: null | string;
+            phone?: null | string;
+            /** Format: double */
+            latitude?: null | number;
+            /** Format: double */
+            longitude?: null | number;
+            timeZone?: null | string;
+            /** Format: double */
+            taxPercentage?: null | number;
+            taxLabel?: null | string;
+            facilityType?: null | components["schemas"]["FacilityType"];
+            active?: null | boolean;
+            stripeAccountId?: null | string;
+            clear?: null | string[];
             /** Format: uint32 */
             version: number;
         };
@@ -971,6 +1988,36 @@ export interface components {
             roleId?: null | string;
             active?: null | boolean;
             displayName?: null | string;
+            /** Format: uint32 */
+            version: number;
+        };
+        UpdateStorageTypeBody: {
+            name?: null | string;
+            displayName?: null | string;
+            iconPath?: null | string;
+            imagePath?: null | string;
+            /** Format: int32 */
+            sortOrder?: null | number;
+            active?: null | boolean;
+            /** Format: uint32 */
+            version: number;
+        };
+        UpdateUnitSizeBody: {
+            key?: null | string;
+            label?: null | string;
+            displayName?: null | string;
+            description?: null | string;
+            unitGroup?: null | string;
+            imagePath?: null | string;
+            /** Format: double */
+            minAreaSqft?: null | number;
+            /** Format: double */
+            maxAreaSqft?: null | number;
+            /** Format: int32 */
+            sortOrder?: null | number;
+            /** Format: uuid */
+            storageTypeId?: null | string;
+            clear?: null | string[];
             /** Format: uint32 */
             version: number;
         };

@@ -65,7 +65,7 @@ export function StaffPage() {
 
   return (
     <PageShell
-      title="Staff"
+      title="Admin Users"
       actions={
         <>
           <Button variant="outline" onClick={() => void staff.refetch()}>Reload</Button>

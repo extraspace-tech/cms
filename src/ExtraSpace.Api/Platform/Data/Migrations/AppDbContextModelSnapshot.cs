@@ -392,6 +392,653 @@ namespace ExtraSpace.Api.Platform.Data.Migrations
                     b.ToTable("login_code", (string)null);
                 });
 
+            modelBuilder.Entity("ExtraSpace.Api.Features.Sites.Site", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("boolean")
+                        .HasColumnName("active");
+
+                    b.Property<string>("Address1")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("address1");
+
+                    b.Property<string>("City")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("city");
+
+                    b.Property<string>("Country")
+                        .IsRequired()
+                        .HasMaxLength(2)
+                        .HasColumnType("character(2)")
+                        .HasColumnName("country")
+                        .IsFixedLength();
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedByStaffId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_staff_id");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character(3)")
+                        .HasColumnName("currency")
+                        .IsFixedLength();
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("DisplayName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("display_name");
+
+                    b.Property<string>("FacilityType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("facility_type");
+
+                    b.Property<string>("HeroImageUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("hero_image_url");
+
+                    b.Property<decimal?>("Latitude")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("numeric(9,6)")
+                        .HasColumnName("latitude");
+
+                    b.Property<string>("LocationCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("location_code");
+
+                    b.Property<decimal?>("Longitude")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("numeric(9,6)")
+                        .HasColumnName("longitude");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("phone");
+
+                    b.Property<string>("PostalCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("postal_code");
+
+                    b.Property<string>("Region")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("region");
+
+                    b.Property<int?>("SiteLinkSiteId")
+                        .HasColumnType("integer")
+                        .HasColumnName("sitelink_site_id");
+
+                    b.Property<string>("StripeAccountId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("stripe_account_id");
+
+                    b.Property<string>("TaxLabel")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("tax_label");
+
+                    b.Property<decimal>("TaxPercentage")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("tax_percentage");
+
+                    b.Property<string>("TimeZone")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("time_zone");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedByStaffId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_staff_id");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_site");
+
+                    b.HasIndex("LocationCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_site_location_code");
+
+                    b.HasIndex("SiteLinkSiteId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_site_sitelink_site_id");
+
+                    b.ToTable("site", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_site_country", "country IN ('SG', 'MY', 'KR')");
+
+                            t.HasCheckConstraint("ck_site_country_currency", "(country, currency) IN (('SG', 'SGD'), ('MY', 'MYR'), ('KR', 'KRW'))");
+
+                            t.HasCheckConstraint("ck_site_currency", "currency IN ('SGD', 'MYR', 'KRW')");
+
+                            t.HasCheckConstraint("ck_site_tax_percentage", "tax_percentage >= 0 AND tax_percentage <= 100");
+                        });
+                });
+
+            modelBuilder.Entity("ExtraSpace.Api.Features.Sites.StorageType", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("boolean")
+                        .HasColumnName("active");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedByStaffId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_staff_id");
+
+                    b.Property<string>("DisplayName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("display_name");
+
+                    b.Property<string>("IconPath")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("icon_path");
+
+                    b.Property<string>("ImagePath")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("image_path");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("key");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedByStaffId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_staff_id");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_storage_type");
+
+                    b.HasIndex("Key")
+                        .IsUnique()
+                        .HasDatabaseName("ix_storage_type_key");
+
+                    b.ToTable("storage_type", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("0199e000-0000-7000-8000-000000000001"),
+                            Active = true,
+                            CreatedAt = new DateTime(2026, 10, 14, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Key = "self-storage",
+                            Name = "Self Storage",
+                            SortOrder = 1,
+                            UpdatedAt = new DateTime(2026, 10, 14, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Version = 0u
+                        },
+                        new
+                        {
+                            Id = new Guid("0199e000-0000-7000-8000-000000000002"),
+                            Active = false,
+                            CreatedAt = new DateTime(2026, 10, 14, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Key = "workspace",
+                            Name = "Workspace",
+                            SortOrder = 2,
+                            UpdatedAt = new DateTime(2026, 10, 14, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Version = 0u
+                        });
+                });
+
+            modelBuilder.Entity("ExtraSpace.Api.Features.Sites.Unit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Ada")
+                        .HasColumnType("boolean")
+                        .HasColumnName("ada");
+
+                    b.Property<bool>("Alarm")
+                        .HasColumnType("boolean")
+                        .HasColumnName("alarm");
+
+                    b.Property<decimal>("AreaSqft")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("area_sqft");
+
+                    b.Property<bool>("Available")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("boolean")
+                        .HasColumnName("available")
+                        .HasComputedColumnSql("rentable AND NOT rented AND NOT waiting_list_reserved AND deleted_at IS NULL", true);
+
+                    b.Property<decimal?>("BoardRate")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("board_rate");
+
+                    b.Property<bool>("Climate")
+                        .HasColumnType("boolean")
+                        .HasColumnName("climate");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("description");
+
+                    b.Property<int?>("Floor")
+                        .HasColumnType("integer")
+                        .HasColumnName("floor");
+
+                    b.Property<bool>("Inside")
+                        .HasColumnType("boolean")
+                        .HasColumnName("inside");
+
+                    b.Property<DateTime?>("LastSyncedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_synced_at");
+
+                    b.Property<decimal>("Length")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("length");
+
+                    b.Property<bool>("Mobile")
+                        .HasColumnType("boolean")
+                        .HasColumnName("mobile");
+
+                    b.Property<bool>("Power")
+                        .HasColumnType("boolean")
+                        .HasColumnName("power");
+
+                    b.Property<decimal?>("PreferredRate")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("preferred_rate");
+
+                    b.Property<decimal?>("PushRate")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("push_rate");
+
+                    b.Property<bool>("Rentable")
+                        .HasColumnType("boolean")
+                        .HasColumnName("rentable");
+
+                    b.Property<bool>("Rented")
+                        .HasColumnType("boolean")
+                        .HasColumnName("rented");
+
+                    b.Property<Guid>("SiteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("site_id");
+
+                    b.Property<int>("SiteLinkUnitId")
+                        .HasColumnType("integer")
+                        .HasColumnName("sitelink_unit_id");
+
+                    b.Property<int>("SiteLinkUnitTypeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("sitelink_unit_type_id");
+
+                    b.Property<decimal?>("StandardRate")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("standard_rate");
+
+                    b.Property<decimal?>("StandardSecurityDeposit")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("standard_security_deposit");
+
+                    b.Property<Guid?>("StorageTypeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("storage_type_id");
+
+                    b.Property<string>("UnitName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("unit_name");
+
+                    b.Property<Guid?>("UnitSizeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("unit_size_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<bool>("WaitingListReserved")
+                        .HasColumnType("boolean")
+                        .HasColumnName("waiting_list_reserved");
+
+                    b.Property<decimal?>("WebRate")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("web_rate");
+
+                    b.Property<decimal>("Width")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("width");
+
+                    b.HasKey("Id")
+                        .HasName("pk_unit");
+
+                    b.HasIndex("StorageTypeId")
+                        .HasDatabaseName("ix_unit_storage_type_id");
+
+                    b.HasIndex("UnitSizeId")
+                        .HasDatabaseName("ix_unit_unit_size_id");
+
+                    b.HasIndex("SiteId", "SiteLinkUnitId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_unit_site_id_sitelink_unit_id");
+
+                    b.HasIndex("SiteId", "UnitName")
+                        .HasDatabaseName("ix_unit_site_id_unit_name");
+
+                    b.ToTable("unit", (string)null);
+                });
+
+            modelBuilder.Entity("ExtraSpace.Api.Features.Sites.UnitSize", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedByStaffId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_staff_id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("DisplayName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("display_name");
+
+                    b.Property<string>("ImagePath")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("image_path");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("key");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("label");
+
+                    b.Property<decimal?>("MaxAreaSqft")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("max_area_sqft");
+
+                    b.Property<decimal?>("MinAreaSqft")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("min_area_sqft");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<Guid?>("StorageTypeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("storage_type_id");
+
+                    b.Property<string>("UnitGroup")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("unit_group");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedByStaffId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_staff_id");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_unit_size");
+
+                    b.HasIndex("Key")
+                        .IsUnique()
+                        .HasDatabaseName("ix_unit_size_key");
+
+                    b.HasIndex("StorageTypeId")
+                        .HasDatabaseName("ix_unit_size_storage_type_id");
+
+                    b.ToTable("unit_size", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_unit_size_range", "min_area_sqft IS NULL OR max_area_sqft IS NULL OR min_area_sqft <= max_area_sqft");
+                        });
+                });
+
+            modelBuilder.Entity("ExtraSpace.Api.Features.Sites.UnitSyncState", b =>
+                {
+                    b.Property<Guid>("SiteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("site_id");
+
+                    b.Property<DateTime?>("LastAttemptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_attempt_at");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("last_error");
+
+                    b.Property<DateTime?>("LastSyncedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_synced_at");
+
+                    b.Property<long?>("LastTimePolledTicks")
+                        .HasColumnType("bigint")
+                        .HasColumnName("last_time_polled_ticks");
+
+                    b.HasKey("SiteId")
+                        .HasName("pk_unit_sync_state");
+
+                    b.ToTable("unit_sync_state", (string)null);
+                });
+
+            modelBuilder.Entity("ExtraSpace.Api.Integrations.SiteLink.SiteLinkCallMonth", b =>
+                {
+                    b.Property<DateOnly>("Month")
+                        .HasColumnType("date")
+                        .HasColumnName("month");
+
+                    b.Property<string>("Operation")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("operation");
+
+                    b.Property<long>("Calls")
+                        .HasColumnType("bigint")
+                        .HasColumnName("calls");
+
+                    b.HasKey("Month", "Operation")
+                        .HasName("pk_sitelink_call_month");
+
+                    b.ToTable("sitelink_call_month", (string)null);
+                });
+
+            modelBuilder.Entity("ExtraSpace.Api.Platform.Outbox.OutboxMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempts");
+
+                    b.Property<DateTime>("AvailableAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("available_at");
+
+                    b.Property<string>("CorrelationId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("correlation_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("FailedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("failed_at");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("idempotency_key");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("last_error");
+
+                    b.Property<JsonDocument>("Payload")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("payload");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processed_at");
+
+                    b.Property<string>("ResolutionNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("resolution_note");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("resolved_at");
+
+                    b.Property<Guid?>("ResolvedByStaffId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("resolved_by_staff_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_outbox_message");
+
+                    b.HasIndex("AvailableAt")
+                        .HasDatabaseName("ix_outbox_message_available_at")
+                        .HasFilter("processed_at IS NULL AND failed_at IS NULL");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_outbox_message_idempotency_key");
+
+                    b.ToTable("outbox_message", (string)null);
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>
                 {
                     b.Property<int>("Id")
@@ -445,6 +1092,53 @@ namespace ExtraSpace.Api.Platform.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_customer_refresh_token_customer_customer_id");
+                });
+
+            modelBuilder.Entity("ExtraSpace.Api.Features.Sites.Unit", b =>
+                {
+                    b.HasOne("ExtraSpace.Api.Features.Sites.Site", "Site")
+                        .WithMany()
+                        .HasForeignKey("SiteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_unit_site_site_id");
+
+                    b.HasOne("ExtraSpace.Api.Features.Sites.StorageType", "StorageType")
+                        .WithMany()
+                        .HasForeignKey("StorageTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_unit_storage_type_storage_type_id");
+
+                    b.HasOne("ExtraSpace.Api.Features.Sites.UnitSize", "UnitSize")
+                        .WithMany()
+                        .HasForeignKey("UnitSizeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_unit_unit_size_unit_size_id");
+
+                    b.Navigation("Site");
+
+                    b.Navigation("StorageType");
+
+                    b.Navigation("UnitSize");
+                });
+
+            modelBuilder.Entity("ExtraSpace.Api.Features.Sites.UnitSize", b =>
+                {
+                    b.HasOne("ExtraSpace.Api.Features.Sites.StorageType", null)
+                        .WithMany()
+                        .HasForeignKey("StorageTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_unit_size_storage_type_storage_type_id");
+                });
+
+            modelBuilder.Entity("ExtraSpace.Api.Features.Sites.UnitSyncState", b =>
+                {
+                    b.HasOne("ExtraSpace.Api.Features.Sites.Site", null)
+                        .WithOne()
+                        .HasForeignKey("ExtraSpace.Api.Features.Sites.UnitSyncState", "SiteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_unit_sync_state_site_site_id");
                 });
 #pragma warning restore 612, 618
         }
