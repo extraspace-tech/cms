@@ -1,3 +1,4 @@
+using System.Globalization;
 using Amazon.CDK;
 using Amazon.CDK.AWS.CertificateManager;
 using Amazon.CDK.AWS.EC2;
@@ -94,6 +95,21 @@ public sealed class AppStack : Stack
             RemovalPolicy = removal,
         });
 
+        // Created empty; the owner puts the SiteLink login in by hand (never in this repo). GenerateSecretString only fills a
+        // value at creation, so a later deploy never overwrites what the owner stored.
+        var siteLink = new Secret(this, "SiteLink", new SecretProps
+        {
+            SecretName = $"es/{env}/sitelink",
+            Description = $"SiteLink CCWs login ({env})",
+            GenerateSecretString = new SecretStringGenerator
+            {
+                SecretStringTemplate = "{\"CorpCode\":\"\",\"CorpUserName\":\"\",\"CorpPassword\":\"\",\"ApiKey\":\"\"}",
+                GenerateStringKey = "Unused",
+                ExcludePunctuation = true,
+            },
+            RemovalPolicy = removal,
+        });
+
         var cluster = new Cluster(this, "Cluster", new ClusterProps
         {
             ClusterName = CiStack.ClusterName(env),
@@ -149,12 +165,19 @@ public sealed class AppStack : Stack
         AddList(settings, "Admin__BootstrapEmails", inputs.BootstrapEmails);
         AddList(settings, "Cors__AllowedOrigins", inputs.CorsOrigins);
         if (!config.IsProduction) AddList(settings, "Email__AllowedRecipients", inputs.EmailAllowedRecipients);
+        AddList(settings, "SiteLink__WriteAllowList", config.SiteLinkWriteAllowList);
+        if (config.SiteLinkAllowAllWrites) settings["SiteLink__AllowWritesToAllSites"] = "true";
+        if (config.SiteLinkMonthlyCallAlarm > 0) settings["SiteLink__MonthlyCallAlarm"] = config.SiteLinkMonthlyCallAlarm.ToString(CultureInfo.InvariantCulture);
 
         var secrets = new Dictionary<string, EcsSecret>
         {
             ["CustomerAuth__SigningKey"] = EcsSecret.FromSecretsManager(signingKey),
             ["Database__Password"] = EcsSecret.FromSecretsManager(props.Data.AppUserSecret, "password"),
             ["Database__Username"] = EcsSecret.FromSecretsManager(props.Data.AppUserSecret, "username"),
+            ["SiteLink__ApiKey"] = EcsSecret.FromSecretsManager(siteLink, "ApiKey"),
+            ["SiteLink__CorpCode"] = EcsSecret.FromSecretsManager(siteLink, "CorpCode"),
+            ["SiteLink__CorpPassword"] = EcsSecret.FromSecretsManager(siteLink, "CorpPassword"),
+            ["SiteLink__CorpUserName"] = EcsSecret.FromSecretsManager(siteLink, "CorpUserName"),
         };
 
         var logGroups = new List<LogGroup>();

@@ -35,7 +35,7 @@ describe('sign-in', () => {
     await user.type(await screen.findByLabelText('Code'), '123456')
     await user.click(screen.getByRole('button', { name: 'Sign in' }))
 
-    expect(await screen.findByRole('heading', { name: 'Staff' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Admin Users' })).toBeInTheDocument()
     expect(verified).toEqual({ email: 'owner@example.test', code: '123456' })
     expect(screen.getByText('Olive Owner')).toBeInTheDocument()
   })

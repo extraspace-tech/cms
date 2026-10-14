@@ -12,18 +12,15 @@ internal static class JobsSetup
         var options = configuration.GetSection(JobsOptions.Section).Get<JobsOptions>() ?? new JobsOptions();
         var role = configuration.GetSection(AppOptions.Section).Get<AppOptions>()?.Role ?? AppRole.All;
 
-        services.AddSingleton<JobTracingFilter>();
+        services.AddSingleton(JobTracingFilter.Shared);
+        services.AddSingleton<JobTracingLogger>();
         services.AddHangfire((sp, config) =>
         {
-            // Hangfire's filters are process-wide: a second host in the same process (tests) must replace ours, not add more.
-            // Our filter logs each attempt once; Hangfire's default retry filter would log the same failure again.
-            GlobalJobFilters.Filters.Remove(typeof(AutomaticRetryAttribute));
-            GlobalJobFilters.Filters.Remove(typeof(JobTracingFilter));
+            _ = sp.GetRequiredService<JobTracingLogger>();   // attaches this host's logger to the shared filter until the host ends
+            UseProcessWideFilters();
             config.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
                 .UseSimpleAssemblyNameTypeSerializer()
                 .UseRecommendedSerializerSettings()
-                .UseFilter(new AutomaticRetryAttribute { LogEvents = false })
-                .UseFilter(sp.GetRequiredService<JobTracingFilter>())
                 .UsePostgreSqlStorage(
                     c => c.UseNpgsqlConnection(sp.GetRequiredService<IConfiguration>().GetConnectionString("Default")
                         ?? throw new InvalidOperationException("ConnectionStrings:Default is not set.")),
@@ -41,5 +38,21 @@ internal static class JobsSetup
             services.AddHostedService<RecurringJobsRegistrar>();
         }
         return services;
+    }
+
+    private static readonly Lock FiltersLock = new();
+
+    // Hangfire's filters are process-wide: the first host adds ours and later hosts in the same process (tests) leave the list
+    // alone, so no job is created or run in a window without them. Our filter logs each attempt once; Hangfire's default retry
+    // filter would log the same failure again.
+    private static void UseProcessWideFilters()
+    {
+        lock (FiltersLock)
+        {
+            if (GlobalJobFilters.Filters.Any(f => f.Instance == JobTracingFilter.Shared)) return;
+            GlobalJobFilters.Filters.Remove(typeof(AutomaticRetryAttribute));
+            GlobalJobFilters.Filters.Add(new AutomaticRetryAttribute { LogEvents = false });
+            GlobalJobFilters.Filters.Add(JobTracingFilter.Shared);
+        }
     }
 }

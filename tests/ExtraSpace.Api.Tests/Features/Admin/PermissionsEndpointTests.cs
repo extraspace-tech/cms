@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using ExtraSpace.Api.Features.Admin;
+using ExtraSpace.Api.Features.Sites;
 using ExtraSpace.Api.Tests.TestSupport;
 
 namespace ExtraSpace.Api.Tests.Features.Admin;
@@ -16,7 +17,8 @@ public sealed class PermissionsEndpointTests(ApiFactory api)
 
         var items = list.EnumerateArray().ToList();
         items.Select(p => p.GetProperty("name").GetString())
-            .Should().Equal(AdminPermissions.AuditRead, AdminPermissions.JobsManage, AdminPermissions.RolesManage, AdminPermissions.StaffManage);
+            .Should().Equal(AdminPermissions.AuditRead, AdminPermissions.JobsManage, AdminPermissions.RolesManage, SitesPermissions.Manage,
+                AdminPermissions.StaffManage);
         items.Should().AllSatisfy(p => p.GetProperty("description").GetString().Should().NotBeNullOrWhiteSpace());
     }
 }

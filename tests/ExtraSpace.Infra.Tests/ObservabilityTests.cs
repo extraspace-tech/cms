@@ -169,6 +169,9 @@ public class ObservabilityTests
     [InlineData("JobsFailedPermanently", "{ $.messageTemplate = \"Job {jobName} failed permanently\" }")]
     [InlineData("OutsideCallFailures", "{ ($.integration = \"*\") && ($.outcome != \"ok\") }")]
     [InlineData("StaffCodesLocked", "{ ($.messageTemplate = \"Login code {codeId} locked after too many wrong attempts\") && ($.purpose = \"Staff\") }")]
+    // Both templates are the app's [LoggerMessage] text, word for word (OutboxDispatchJob, SiteLinkCallCounter).
+    [InlineData("OutboxFailedPermanently", "{ $.messageTemplate = \"Outbox message {outboxId} of kind {kind} failed permanently after {attempt} attempts\" }")]
+    [InlineData("SiteLinkMonthlyCalls", "{ $.messageTemplate = \"SiteLink calls this month reached {total}, past the alarm level {alarm}\" }")]
     public void Metric_filters_read_our_log_fields(string metric, string pattern)
     {
         App("staging").HasResourceProperties("AWS::Logs::MetricFilter", new Dictionary<string, object>
@@ -189,8 +192,8 @@ public class ObservabilityTests
     [Fact]
     public void Production_filters_both_log_groups()
     {
-        App("staging").ResourceCountIs("AWS::Logs::MetricFilter", 4);
-        App("production").ResourceCountIs("AWS::Logs::MetricFilter", 8);
+        App("staging").ResourceCountIs("AWS::Logs::MetricFilter", 6);
+        App("production").ResourceCountIs("AWS::Logs::MetricFilter", 12);
     }
 
     [Theory]
@@ -206,7 +209,11 @@ public class ObservabilityTests
     [InlineData("staging", "db-cpu")]
     [InlineData("staging", "db-connections")]
     [InlineData("staging", "db-free-storage")]
+    [InlineData("staging", "outbox-failed")]
+    [InlineData("staging", "sitelink-monthly-calls")]
     [InlineData("production", "no-running-task-jobs")]
+    [InlineData("production", "outbox-failed")]
+    [InlineData("production", "sitelink-monthly-calls")]
     public void Every_alarm_exists_and_notifies_the_topic(string env, string name)
     {
         App(env).HasResourceProperties("AWS::CloudWatch::Alarm", new Dictionary<string, object>
@@ -217,9 +224,32 @@ public class ObservabilityTests
     }
 
     [Theory]
-    [InlineData("staging", 11)]
-    [InlineData("production", 12)]
+    [InlineData("staging", 13)]
+    [InlineData("production", 14)]
     public void Alarm_count_is_known(string env, int expected) => App(env).ResourceCountIs("AWS::CloudWatch::Alarm", expected);
+
+    // One line is enough: the outbox line is logged once per message, the SiteLink line once per month.
+    [Theory]
+    [InlineData("staging", "outbox-failed", "OutboxFailedPermanently", 300)]
+    [InlineData("production", "outbox-failed", "OutboxFailedPermanently", 300)]
+    [InlineData("staging", "sitelink-monthly-calls", "SiteLinkMonthlyCalls", 3600)]
+    [InlineData("production", "sitelink-monthly-calls", "SiteLinkMonthlyCalls", 3600)]
+    public void Log_line_alarms_fire_on_the_first_line(string env, string name, string metric, int period)
+    {
+        App(env).HasResourceProperties("AWS::CloudWatch::Alarm", new Dictionary<string, object>
+        {
+            ["AlarmName"] = $"es-{env}-{name}",
+            ["Namespace"] = $"ExtraSpace/{env}",
+            ["MetricName"] = metric,
+            ["Statistic"] = "Sum",
+            ["Period"] = period,
+            ["EvaluationPeriods"] = 1,
+            ["Threshold"] = 1,
+            ["ComparisonOperator"] = "GreaterThanOrEqualToThreshold",
+            ["TreatMissingData"] = "notBreaching",
+            ["Dimensions"] = Match.Absent(),
+        });
+    }
 
     [Theory]
     [InlineData("staging")]

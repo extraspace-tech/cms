@@ -10,12 +10,24 @@ export function columnsFor<T extends RowData>() {
 }
 
 // What `useTable` itself takes; `columnsFor<T>().columns([...])` produces it.
-type Columns<T extends RowData> = TableOptions<typeof features, T>['columns']
+export type Columns<T extends RowData> = TableOptions<typeof features, T>['columns']
+
+type Props<T extends RowData> = {
+  columns: Columns<T>
+  data: T[]
+  rowId: (row: T) => string
+  empty?: ReactNode
+  /** Row click (and Enter on a focused row) opens the record. */
+  onRowClick?: (row: T) => void
+  /** A trailing cell per row (buttons); its clicks never reach onRowClick. */
+  rowActions?: (row: T) => ReactNode
+}
 
 /** `rowId` keys the rows by record, not by position. A falsy `empty` shows no placeholder row (the page shows its own error). */
-export function DataTable<T extends RowData>({ columns, data, rowId, empty }: { columns: Columns<T>; data: T[]; rowId: (row: T) => string; empty?: ReactNode }) {
+export function DataTable<T extends RowData>({ columns, data, rowId, empty, onRowClick, rowActions }: Props<T>) {
   const table = useTable({ features, columns, data, getRowId: rowId })
   const rows = table.getRowModel().rows
+  const width = table.getAllColumns().length + (rowActions ? 1 : 0)
   return (
     <div className="rounded-xl border bg-card">
       <Table>
@@ -25,6 +37,7 @@ export function DataTable<T extends RowData>({ columns, data, rowId, empty }: { 
               {group.headers.map((header) => (
                 <TableHead key={header.id}>{header.isPlaceholder ? null : <table.FlexRender header={header} />}</TableHead>
               ))}
+              {rowActions ? <TableHead><span className="sr-only">Actions</span></TableHead> : null}
             </TableRow>
           ))}
         </TableHeader>
@@ -32,15 +45,26 @@ export function DataTable<T extends RowData>({ columns, data, rowId, empty }: { 
           {rows.length === 0 ? (
             empty ? (
               <TableRow>
-                <TableCell colSpan={table.getAllColumns().length} className="py-10 text-center text-sm text-muted-foreground">{empty}</TableCell>
+                <TableCell colSpan={width} className="py-10 text-center text-sm text-muted-foreground">{empty}</TableCell>
               </TableRow>
             ) : null
           ) : (
             rows.map((row) => (
-              <TableRow key={row.id}>
+              <TableRow
+                key={row.id}
+                className={onRowClick ? 'cursor-pointer' : undefined}
+                tabIndex={onRowClick ? 0 : undefined}
+                onClick={onRowClick ? () => onRowClick(row.original) : undefined}
+                onKeyDown={onRowClick ? (event) => { if (event.key === 'Enter') onRowClick(row.original) } : undefined}
+              >
                 {row.getAllCells().map((cell) => (
                   <TableCell key={cell.id}><table.FlexRender cell={cell} /></TableCell>
                 ))}
+                {rowActions ? (
+                  <TableCell className="text-right" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+                    {rowActions(row.original)}
+                  </TableCell>
+                ) : null}
               </TableRow>
             ))
           )}

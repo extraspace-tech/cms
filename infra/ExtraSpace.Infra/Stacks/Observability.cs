@@ -67,6 +67,10 @@ internal sealed class Observability : Construct
             "{ $.messageTemplate = \"Job {jobName} failed permanently\" }");
         var outsideFailures = LogMetric(props.LogGroups, "OutsideCallFailures",
             "{ ($.integration = \"*\") && ($.outcome != \"ok\") }");
+        var outboxFailed = LogMetric(props.LogGroups, "OutboxFailedPermanently",
+            "{ $.messageTemplate = \"Outbox message {outboxId} of kind {kind} failed permanently after {attempt} attempts\" }");
+        var siteLinkMonthly = LogMetric(props.LogGroups, "SiteLinkMonthlyCalls",
+            "{ $.messageTemplate = \"SiteLink calls this month reached {total}, past the alarm level {alarm}\" }");
         var staffLocked = LogMetric(props.LogGroups, "StaffCodesLocked",
             "{ ($.messageTemplate = \"Login code {codeId} locked after too many wrong attempts\") && ($.purpose = \"Staff\") }");
 
@@ -97,6 +101,9 @@ internal sealed class Observability : Construct
         Alarm("error-lines", errorLines(5), 5, 1, ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD, "5 or more Error or Fatal lines in 5 minutes");
         Alarm("job-failed-permanently", jobsFailed(5), 1, 1, ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD, "a job used up its retries");
         Alarm("outside-call-failures", outsideFailures(5), 5, 1, ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD, "5 or more failed outside calls in 5 minutes");
+        Alarm("outbox-failed", outboxFailed(5), 1, 1, ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD, "an outbox step used up its retries (Needs attention)");
+        // CloudWatch cannot sum a month; the app logs one line when the month's total crosses SiteLink:MonthlyCallAlarm.
+        Alarm("sitelink-monthly-calls", siteLinkMonthly(60), 1, 1, ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD, "SiteLink calls this month passed SiteLink:MonthlyCallAlarm");
         Alarm("staff-codes-locked", staffLocked(60), 3, 1, ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD, "3 or more staff sign-in codes locked in an hour");
 
         var database = new Dictionary<string, object> { ["DBInstanceIdentifier"] = $"es-{_env}-postgres" };

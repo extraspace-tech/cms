@@ -21,7 +21,7 @@ internal sealed partial class EmailJob(IDataProtectionProvider protection, IEmai
         }
 
         // No catch: an unreadable payload (key ring fault) must fail and alarm, not be dropped quietly.
-        var json = protection.CreateProtector(HangfireEmailSender.Purpose).ToTimeLimitedDataProtector().Unprotect(payload);
+        var json = protection.CreateProtector(EmailSealer.Purpose).ToTimeLimitedDataProtector().Unprotect(payload);
         var message = JsonSerializer.Deserialize<EmailPayload>(json)!;
         if (!options.Value.Allows(message.To))
         {

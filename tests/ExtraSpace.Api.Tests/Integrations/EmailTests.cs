@@ -101,12 +101,15 @@ public sealed class EmailTests(ApiFactory api)
     }
 
     [Fact]
-    public void Enqueue_fails_in_the_request_when_a_template_value_is_missing()
+    public void Sealing_fails_in_the_request_when_a_template_value_is_missing_or_unknown()
     {
-        var sender = api.Services.GetRequiredService<IEmailSender>();
-        var enqueue = () => sender.Enqueue(new EmailMessage("login-code", NewAddress(),
+        var sealer = api.Services.GetRequiredService<EmailSealer>();
+        var missing = () => sealer.Seal(new EmailMessage("login-code", NewAddress(),
             new Dictionary<string, string> { ["code"] = "123456" }, TimeSpan.FromMinutes(10)));
-        enqueue.Should().Throw<InvalidOperationException>().WithMessage("*minutes*");
+        missing.Should().Throw<InvalidOperationException>().WithMessage("*minutes*");
+        var unknown = () => sealer.Seal(new EmailMessage("no-such-template", NewAddress(),
+            new Dictionary<string, string>(), TimeSpan.FromMinutes(10)));
+        unknown.Should().Throw<InvalidOperationException>().WithMessage("*no-such-template*");
     }
 
     private static IConfiguration Config(string transport) =>

@@ -35,6 +35,7 @@ internal sealed partial class AppExceptionHandler(IProblemDetailsService problem
     internal static (int Status, string Code, string Title) Classify(Exception exception) => exception switch
     {
         AppException app => (app.Status, app.Code, app.Title),
+        IProblemException problem => (problem.Status, problem.Code, problem.Title),
         DbUpdateConcurrencyException => (409, ErrorCodes.Conflict, "The record was changed by someone else. Reload and try again."),
         _ when PostgresError(exception)?.SqlState == PostgresErrorCodes.UniqueViolation => (409, ErrorCodes.Conflict, "A record with the same value already exists."),
         _ when PostgresError(exception)?.SqlState == PostgresErrorCodes.ForeignKeyViolation => (409, ErrorCodes.Conflict, "The record is still in use, or refers to one that no longer exists."),

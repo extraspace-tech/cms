@@ -16,6 +16,9 @@ import { Changes } from './Changes'
 const recordTypes = [
   { value: 'staff_user', label: 'Staff member' },
   { value: 'role', label: 'Role' },
+  { value: 'site', label: 'Site' },
+  { value: 'storage_type', label: 'Storage Type' },
+  { value: 'unit_size', label: 'Unit Size' },
 ]
 
 const helper = columnsFor<AuditItem>()
@@ -68,7 +71,7 @@ export function AuditPage() {
   }
 
   return (
-    <PageShell title="Audit log">
+    <PageShell title="Audit Log">
       <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-4">
         {/* Hiding only: the staff list needs staff.manage (the server refuses it otherwise). */}
         {can('staff.manage') ? <StaffFilter /> : null}

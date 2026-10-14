@@ -5,7 +5,15 @@ import { useSession } from '@/features/auth/session'
 import { AuditPage } from '@/features/audit/AuditPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { RolesPage } from '@/features/roles/RolesPage'
+import { SitePage } from '@/features/sites/SitePage'
+import { SitesPage } from '@/features/sites/SitesPage'
 import { StaffPage } from '@/features/staff/StaffPage'
+import { StorageTypePage } from '@/features/storage-types/StorageTypePage'
+import { StorageTypesPage } from '@/features/storage-types/StorageTypesPage'
+import { UnitSizePage } from '@/features/unit-sizes/UnitSizePage'
+import { UnitSizesPage } from '@/features/unit-sizes/UnitSizesPage'
+import { UnitPage } from '@/features/units/UnitPage'
+import { UnitsPage } from '@/features/units/UnitsPage'
 import { Shell } from './Shell'
 
 function Message({ text }: { text: string }) {
@@ -39,5 +47,13 @@ export const routes = shellRoutes([
   { path: 'staff', Component: guarded('staff.manage', StaffPage) },
   { path: 'roles', Component: guarded('roles.manage', RolesPage) },
   { path: 'audit', Component: guarded('audit.read', AuditPage) },
+  { path: 'sites', Component: SitesPage },
+  { path: 'sites/:id', Component: SitePage },
+  { path: 'storage-types', Component: StorageTypesPage },
+  { path: 'storage-types/:id', Component: StorageTypePage },
+  { path: 'unit-sizes', Component: UnitSizesPage },
+  { path: 'unit-sizes/:id', Component: UnitSizePage },
+  { path: 'units', Component: UnitsPage },
+  { path: 'units/:id', Component: UnitPage },
   { path: '*', Component: () => <Message text="This page does not exist." /> },
 ])

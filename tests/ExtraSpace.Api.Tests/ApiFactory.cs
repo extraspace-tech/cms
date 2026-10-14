@@ -1,6 +1,8 @@
 using ExtraSpace.Api.Integrations.Email;
+using ExtraSpace.Api.Integrations.SiteLink;
 using ExtraSpace.Api.Platform.Data;
 using ExtraSpace.Api.Platform.Hosting;
+using ExtraSpace.Api.Platform.Outbox;
 using ExtraSpace.Api.Tests.TestSupport;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -37,6 +39,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     public FakeEmailTransport Emails { get; } = new();
 
+    public FakeSiteLink SiteLink { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -45,13 +49,24 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("App:MinVersion:android", "2.0.0");
         builder.UseSetting("Cors:AllowedOrigins:0", "https://app.example.test");
         builder.UseSetting("Jobs:QueuePollInterval", "00:00:00.200");
+        builder.UseSetting("Jobs:UnitRefresh:Enabled", "false");   // the hourly refresh must never run against the shared test database
         builder.UseSetting("Email:Transport", "None");
         builder.UseSetting("CustomerAuth:SigningKey", IdentityTestData.SigningKey);
+        builder.UseSetting("SiteLink:BaseUrl", "https://sitelink.example.test/CallCenterWs.asmx");
+        builder.UseSetting("SiteLink:CorpCode", "TESTCORP");
+        builder.UseSetting("SiteLink:CorpUserName", "test-user:::test-key");
+        builder.UseSetting("SiteLink:CorpPassword", "test-password");
+        builder.UseSetting("SiteLink:CallsPerSecond", "1000");
+        builder.UseSetting("SiteLink:RetryDelay", "00:00:00.010");
+        // One host serves every test: failures in one test must not open the breaker for the others.
+        builder.UseSetting("SiteLink:BreakerMinimumThroughput", "1000000");
         builder.ConfigureTestServices(services =>
         {
             services.AddSingleton<IEndpointMapper, TestEndpoints>();
             services.AddTransient<TestJobs>();
+            services.AddOutboxHandler<TestOutboxHandler>();
             services.AddSingleton<IEmailTransport>(Emails);
+            services.AddHttpClient<SiteLinkClient>().ConfigurePrimaryHttpMessageHandler(() => SiteLink).SetHandlerLifetime(Timeout.InfiniteTimeSpan);
             // The validation generator only sees endpoint types of the compilation that calls AddValidation (TestBody lives here).
             services.AddValidation();
             services.AddSingleton<Serilog.Core.ILogEventSink>(Logs);

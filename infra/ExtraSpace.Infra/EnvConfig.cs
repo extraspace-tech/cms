@@ -20,7 +20,11 @@ public sealed record EnvConfig(
     int JobsCpu,
     int JobsMemoryMiB,
     int LogRetentionDays,
-    int DbConnectionsAlarm)
+    int DbConnectionsAlarm,
+    string[] SiteLinkWriteAllowList,
+    bool SiteLinkAllowAllWrites,
+    // The owner sets it once SiteLink states the monthly limit (S1 spec open item 6); 0 = off.
+    long SiteLinkMonthlyCallAlarm)
 {
     public bool IsProduction => Name == "production";
 
@@ -45,7 +49,10 @@ public sealed record EnvConfig(
         JobsCpu: 0,
         JobsMemoryMiB: 0,
         LogRetentionDays: 14,
-        DbConnectionsAlarm: 150);
+        DbConnectionsAlarm: 150,
+        SiteLinkWriteAllowList: ["LSETUP"],
+        SiteLinkAllowAllWrites: false,
+        SiteLinkMonthlyCallAlarm: 0);
 
     public static readonly EnvConfig Production = new(
         Name: "production",
@@ -67,7 +74,10 @@ public sealed record EnvConfig(
         JobsCpu: 1024,
         JobsMemoryMiB: 2048,
         LogRetentionDays: 90,
-        DbConnectionsAlarm: 300);
+        DbConnectionsAlarm: 300,
+        SiteLinkWriteAllowList: [],
+        SiteLinkAllowAllWrites: true,
+        SiteLinkMonthlyCallAlarm: 0);
 
     public static IReadOnlyList<EnvConfig> All { get; } = [Staging, Production];
 }

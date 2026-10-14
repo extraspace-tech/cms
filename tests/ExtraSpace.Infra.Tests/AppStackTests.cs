@@ -193,6 +193,7 @@ public class AppStackTests
     ];
 
     // The whole list, written out: one extra variable (Database__RequireMigrated, ConnectionStrings__Default) is a mismatch.
+    // Staging writes to SiteLink only through the allow-list; production opts in to every site (S1-1 decision 3).
     [Theory]
     [InlineData("staging", "api", true)]
     [InlineData("production", "api", false)]
@@ -201,14 +202,77 @@ public class AppStackTests
     {
         var container = AppContainer(env, name);
         var expected = allowList
-            ? SettingNames.Concat(["Email__AllowedRecipients__0", "Email__AllowedRecipients__1"]).Order(StringComparer.Ordinal).ToArray()
-            : SettingNames.Order(StringComparer.Ordinal).ToArray();
+            ? SettingNames.Concat(["Email__AllowedRecipients__0", "Email__AllowedRecipients__1", "SiteLink__WriteAllowList__0"]).Order(StringComparer.Ordinal).ToArray()
+            : SettingNames.Concat(["SiteLink__AllowWritesToAllSites"]).Order(StringComparer.Ordinal).ToArray();
 
         Assert.Equal(expected, container["Environment"]!.AsArray().Select(e => e!["Name"]!.GetValue<string>()).Order(StringComparer.Ordinal).ToArray());
         Assert.Equal(
-            new[] { "CustomerAuth__SigningKey", "Database__Password", "Database__Username" },
+            new[]
+            {
+                "CustomerAuth__SigningKey", "Database__Password", "Database__Username",
+                "SiteLink__ApiKey", "SiteLink__CorpCode", "SiteLink__CorpPassword", "SiteLink__CorpUserName",
+            },
             container["Secrets"]!.AsArray().Select(e => e!["Name"]!.GetValue<string>()).Order(StringComparer.Ordinal).ToArray());
         Assert.Equal("extraspace", Setting(container, "Database__Name")!.GetValue<string>());
+    }
+
+    [Theory]
+    [InlineData("staging", "api", "SiteLink__WriteAllowList__0", "LSETUP")]
+    [InlineData("production", "api", "SiteLink__AllowWritesToAllSites", "true")]
+    [InlineData("production", "jobs", "SiteLink__AllowWritesToAllSites", "true")]
+    public void The_sitelink_write_guard_is_set_per_environment(string env, string name, string setting, string value)
+    {
+        var container = AppContainer(env, name);
+
+        Assert.Equal(value, Setting(container, setting)!.GetValue<string>());
+        var names = container["Environment"]!.AsArray().Select(e => e!["Name"]!.GetValue<string>()).ToArray();
+        Assert.DoesNotContain("SiteLink__MonthlyCallAlarm", names);   // 0 = off until SiteLink states its monthly limit
+        if (env == "production") Assert.DoesNotContain(names, n => n.StartsWith("SiteLink__WriteAllowList", StringComparison.Ordinal));
+        else Assert.DoesNotContain("SiteLink__AllowWritesToAllSites", names);
+    }
+
+    [Theory]
+    [InlineData("staging", "api")]
+    [InlineData("production", "api")]
+    [InlineData("production", "jobs")]
+    public void The_sitelink_login_comes_from_its_secret_by_json_key(string env, string name)
+    {
+        var container = AppContainer(env, name);
+        var secretId = Resources($"EsApp-{env}", "AWS::SecretsManager::Secret")
+            .Single(s => s.Value["Properties"]!["Name"]!.GetValue<string>() == $"es/{env}/sitelink").Key;
+
+        foreach (var key in new[] { "ApiKey", "CorpCode", "CorpPassword", "CorpUserName" })
+        {
+            var valueFrom = container["Secrets"]!.AsArray().Single(e => e!["Name"]!.GetValue<string>() == $"SiteLink__{key}")!["ValueFrom"]!;
+            Assert.Equal(
+                $$"""{"Fn::Join":["",[{"Ref":"{{secretId}}"},":{{key}}::"]]}""",
+                valueFrom.ToJsonString());
+        }
+    }
+
+    [Fact]
+    public void A_monthly_call_alarm_level_reaches_the_app_when_set()
+    {
+        var config = EnvConfig.Staging with { SiteLinkMonthlyCallAlarm = 50000 };
+        var app = new Amazon.CDK.App();
+        var env = new Amazon.CDK.Environment { Account = "123456789012", Region = InfraComposer.Region };
+        var network = new Stacks.NetworkStack(app, "Network", new Stacks.NetworkStackProps { Env = env, Config = config });
+        var data = new Stacks.DataStack(app, "Data", new Stacks.DataStackProps { Env = env, Config = config, Vpc = network.Vpc });
+        var edge = new Stacks.EdgeStack(app, "Edge", new Stacks.EdgeStackProps { Env = env, Config = config, Inputs = TestInputs.For("staging") });
+        var stack = new Stacks.AppStack(app, "App", new Stacks.AppStackProps
+        {
+            Env = env,
+            Config = config,
+            Inputs = TestInputs.For("staging"),
+            Vpc = network.Vpc,
+            Data = data,
+            Certificate = edge.Certificate,
+        });
+
+        Template.FromStack(stack).HasResourceProperties("AWS::ECS::TaskDefinition", Container(new Dictionary<string, object>
+        {
+            ["Environment"] = Match.ArrayWith(new object[] { Env("SiteLink__MonthlyCallAlarm", "50000") }),
+        }));
     }
 
     [Theory]
@@ -476,7 +540,7 @@ public class AppStackTests
     [Theory]
     [InlineData("staging")]
     [InlineData("production")]
-    public void Execution_role_reads_only_this_environments_two_secrets(string env)
+    public void Execution_role_reads_only_this_environments_three_secrets(string env)
     {
         var statements = Statements(env, "ExecutionRole");
         var secrets = statements.Where(s => s.Actions.Any(a => a.StartsWith("secretsmanager:", StringComparison.OrdinalIgnoreCase))).ToArray();
@@ -486,8 +550,10 @@ public class AppStackTests
             {
                 $"secretsmanager:DescribeSecret -> SECRET es/{env}/customer-signing-key",
                 $"secretsmanager:DescribeSecret -> SECRET es/{env}/db-app",
+                $"secretsmanager:DescribeSecret -> SECRET es/{env}/sitelink",
                 $"secretsmanager:GetSecretValue -> SECRET es/{env}/customer-signing-key",
                 $"secretsmanager:GetSecretValue -> SECRET es/{env}/db-app",
+                $"secretsmanager:GetSecretValue -> SECRET es/{env}/sitelink",
             },
             Grants(secrets));
 
@@ -552,6 +618,26 @@ public class AppStackTests
             ["GenerateSecretString"] = new Dictionary<string, object> { ["PasswordLength"] = 64, ["ExcludePunctuation"] = true },
         });
         template.ResourceCountIs("AWS::Lambda::Function", 0);
+    }
+
+    // Created empty: the owner puts the login in by hand. A deploy never overwrites it (GenerateSecretString runs at creation only).
+    [Theory]
+    [InlineData("staging", "Delete")]
+    [InlineData("production", "Retain")]
+    public void The_sitelink_secret_is_created_empty_and_kept_like_the_signing_key(string env, string deletion)
+    {
+        var secrets = Resources($"EsApp-{env}", "AWS::SecretsManager::Secret").Values.ToArray();
+        var siteLink = secrets.Single(s => s["Properties"]!["Name"]!.GetValue<string>() == $"es/{env}/sitelink");
+        var signingKey = secrets.Single(s => s["Properties"]!["Name"]!.GetValue<string>() == $"es/{env}/customer-signing-key");
+
+        Assert.Equal(
+            """{"CorpCode":"","CorpUserName":"","CorpPassword":"","ApiKey":""}""",
+            siteLink["Properties"]!["GenerateSecretString"]!["SecretStringTemplate"]!.GetValue<string>());
+        Assert.Null(siteLink["Properties"]!["SecretString"]);
+        Assert.Equal(deletion, siteLink["DeletionPolicy"]!.GetValue<string>());
+        Assert.Equal(signingKey["DeletionPolicy"]!.GetValue<string>(), siteLink["DeletionPolicy"]!.GetValue<string>());
+        Assert.Equal(signingKey["UpdateReplacePolicy"]!.GetValue<string>(), siteLink["UpdateReplacePolicy"]!.GetValue<string>());
+        Assert.Equal(2, secrets.Length);   // the database secrets live in the data stack
     }
 
     private sealed record Statement(string Effect, string[] Actions, string[] Resources, string? Condition, bool HasNotActionOrNotResource);

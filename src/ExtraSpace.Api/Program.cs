@@ -1,6 +1,9 @@
 using ExtraSpace.Api.Features.Admin;
 using ExtraSpace.Api.Features.Identity;
+using ExtraSpace.Api.Features.Sites;
+using ExtraSpace.Api.Features.Sites.Admin;
 using ExtraSpace.Api.Integrations.Email;
+using ExtraSpace.Api.Integrations.SiteLink;
 using ExtraSpace.Api.Platform.Data;
 using ExtraSpace.Api.Platform.Health;
 using ExtraSpace.Api.Platform.Hosting;
@@ -14,8 +17,10 @@ builder.AddPlatformLogging();
 DatabaseConnection.Compose(builder.Configuration);
 builder.Services.AddPlatform(builder.Configuration, builder.Environment);
 builder.Services.AddEmail(builder.Configuration, builder.Environment);
+builder.Services.AddSiteLink(builder.Configuration, builder.Environment);
 builder.Services.AddIdentityFeature(builder.Configuration);
 builder.Services.AddAdminFeature(builder.Configuration, builder.Environment);
+builder.Services.AddSitesFeature();
 
 var app = builder.Build();
 
@@ -47,6 +52,7 @@ var api = app.MapGroup("/api/v1").RequireCustomer().WithEnumGuard();   // custom
 api.MapIdentityEndpoints();
 var admin = app.MapGroup("/admin/api").RequireStaff().WithEnumGuard();   // admin API; cookie + CSRF + audit
 admin.MapAdminEndpoints();
+admin.MapSitesAdminEndpoints();
 app.MapJobsDashboard();
 foreach (var mapper in app.Services.GetServices<IEndpointMapper>()) mapper.Map(app);
 app.MapHealthEndpoints();
