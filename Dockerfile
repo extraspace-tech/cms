@@ -24,7 +24,7 @@ RUN dotnet publish src/ExtraSpace.Api/ExtraSpace.Api.csproj -c Release -o /app -
     && rm /app/appsettings.Development.json
 
 # 3. Runtime. The full noble image: the jobs role needs tzdata (Asia/Singapore) and ICU.
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble@sha256:222759b391a1aaf241166672c8f99b2d4ada452e7b5319f3c6e8f265a37b5ad4
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble@sha256:d5633778c754e89a386882eddf8dbee6942447a8a4b8267c19cf1e1158d0b0ac
 WORKDIR /app
 COPY --from=build /app ./
 # After the COPY, so a new commit SHA does not rebuild the app layer.
