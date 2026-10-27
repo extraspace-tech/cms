@@ -9,7 +9,7 @@ COPY admin-ui/ ./
 RUN npm run build
 
 # 2. The API.
-FROM mcr.microsoft.com/dotnet/sdk:10.0.400-noble@sha256:4beef5b8919dcaa2dc924233bd069257e883cc7a061e09088a97d152d6a48510 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0.403-noble@sha256:de4fe90a98845d75910b9769662465c84de1a934665c431279d1382b2bddc02b AS build
 WORKDIR /repo
 COPY global.json Directory.Build.props Directory.Packages.props .editorconfig ./
 # src/Directory.Build.props adds an analyzer package, so restore must see it.
